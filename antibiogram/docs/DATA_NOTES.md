@@ -84,6 +84,13 @@ norm_hn(s): เอาเฉพาะตัวเลข -> ถ้ายาว >= 
 - ผู้ใช้ยืนยัน: ใช้ **วันที่อย่างเดียว** ไม่ต้องคิดชั่วโมง -> เทียบส่วนต่างเป็นวันปฏิทิน
   (`วันที่ลงทะเบียน` มีแต่วันที่พอดีกับเกณฑ์นี้)
 
+## การรวมกลุ่มเชื้อ (rollup) เมื่อไม่ถึงเกณฑ์ — CLSI M39
+- เชื้อ n >= min (30) -> แถวของตัวเอง
+- เชื้อ n < min -> รวมเป็น "<Genus> species"; genus ยัง < min -> "Other <Family>"; ยังไม่พอ -> "Other organisms"
+- **เชื้อหลัก (primary)** ดึงจาก publish (แก้ได้ที่ `config/primary_organisms.csv`) ถ้า < min
+  จะรวมได้แค่ระดับ genus ของตัวเอง ("<Genus> species") ไม่ถูกโยนลงถัง Other รวมกับเชื้ออื่น
+- taxonomy genus->family ที่ `config/taxonomy.csv` · โมดูล `ab/rollup.py`
+
 ## เกณฑ์ที่ยืนยันแล้ว
 - CAI/HAI นับเป็น **วัน** (ไม่คิดชั่วโมง): (วันส่งตรวจ - วัน admit) **>= 2 วัน = HAI**, < 2 วัน = CAI
 - dedup = first isolate per patient per species (HN + organism)

@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, loader, mapping
+from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, loader, mapping, rollup
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -152,7 +152,11 @@ if do_dedup:
         work, scope=conditions["deduplication"]["scope"]
     )
 
-st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {len(work):,} isolates")
+# รวมกลุ่มเชื้อที่ไม่ถึงเกณฑ์ (genus -> family) ตาม CLSI M39
+work = rollup.apply_rollup(work, int(min_iso), organism_field="organism")
+
+st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {len(work):,} isolates "
+           f"· กลุ่มเชื้อที่รายงาน {work['report_organism'].nunique()} กลุ่ม")
 
 # --- 5. ผลลัพธ์ -----------------------------------------------------------
 st.header("5) ผลลัพธ์ Antibiogram")
@@ -161,7 +165,7 @@ if not ab_cols:
     st.stop()
 
 show_unreportable = st.checkbox("แสดงช่องที่จำนวนต่ำกว่าเกณฑ์ด้วย", value=False)
-long_form = antibiogram.compute_antibiogram(work, ab_cols, conditions)
+long_form = antibiogram.compute_antibiogram(work, ab_cols, conditions, organism_field="report_organism")
 matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
 
 st.dataframe(matrix, use_container_width=True)
