@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, config, dedup, dictionary, export, loader, mapping
+from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, loader, mapping
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -61,6 +61,25 @@ ab_cols = st.multiselect(
     help="เลือกคอลัมน์ที่เก็บผล S/I/R ของยาแต่ละตัว",
 )
 
+# --- 2b. ไฟล์ HIS (วัน admit) สำหรับ CAI/HAI ------------------------------
+st.header("2b) ไฟล์ HIS สำหรับแยก CAI/HAI (ไม่บังคับ)")
+st.caption("ไฟล์แลปไม่มีวัน admit — อัปโหลดรายงาน HIS (เช่น QR-10-020) เพื่อ join ด้วย HN")
+his_file = st.file_uploader("เลือกไฟล์ HIS .xlsx/.xls", type=["xlsx", "xls"], key="his")
+his_hn_col = his_admit_col = None
+his_raw = None
+if his_file is not None:
+    his_raw = loader.read_excel(his_file)
+    his_cols = list(his_raw.columns.astype(str))
+    h1, h2 = st.columns(2)
+    with h1:
+        hn_guess = next((c for c in his_cols if c.strip().upper() == "HN"), his_cols[0])
+        his_hn_col = st.selectbox("คอลัมน์ HN (ไฟล์ HIS)", his_cols,
+                                  index=his_cols.index(hn_guess), key="his_hn")
+    with h2:
+        adm_guess = next((c for c in his_cols if "ลงทะเบียน" in c or "admit" in c.lower()), his_cols[0])
+        his_admit_col = st.selectbox("คอลัมน์วัน admit (ไฟล์ HIS)", his_cols,
+                                     index=his_cols.index(adm_guess), key="his_admit")
+
 # --- 3. เงื่อนไขการวิเคราะห์ ---------------------------------------------
 st.header("3) เงื่อนไขการวิเคราะห์")
 conditions = _load_conditions()
@@ -95,6 +114,14 @@ if unknown_orgs:
 std_df["organism"] = std_df["organism"].map(
     lambda v: org_dict.normalize(v) if pd.notna(v) else v
 )
+
+# join วัน admit จากไฟล์ HIS (ถ้ามี) -> เติมคอลัมน์ admit_datetime
+if his_raw is not None and his_hn_col and his_admit_col:
+    admit_lookup = his_join.build_admit_lookup(his_raw, his_hn_col, his_admit_col)
+    std_df = std_df.drop(columns=["admit_datetime"], errors="ignore")
+    std_df = his_join.attach_admit(std_df, admit_lookup)
+    matched = std_df["admit_datetime"].notna().sum()
+    st.success(f"join HIS สำเร็จ: จับคู่วัน admit ได้ {matched:,}/{len(std_df):,} isolates")
 
 std_df = classify.classify_infection_origin(
     std_df,
