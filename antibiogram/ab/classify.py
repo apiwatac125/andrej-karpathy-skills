@@ -1,4 +1,8 @@
-"""แยก CAI / HAI ด้วยเกณฑ์ชั่วโมงหลัง admit (default 48 ชม.)."""
+"""แยก CAI / HAI โดยนับส่วนต่างเป็น "วัน" (วันปฏิทิน).
+
+เกณฑ์: (วันส่งตรวจ - วัน admit) >= hai_threshold_days -> HAI มิฉะนั้น CAI.
+ไม่คิดชั่วโมง (normalize เป็นวันที่ก่อนลบกัน).
+"""
 
 from __future__ import annotations
 
@@ -7,23 +11,23 @@ import pandas as pd
 
 def classify_infection_origin(
     df: pd.DataFrame,
-    hai_threshold_hours: float = 48,
+    hai_threshold_days: int = 2,
     missing_admit_as: str = "CAI",
 ) -> pd.DataFrame:
-    """เพิ่มคอลัมน์ 'infection_origin' (CAI / HAI / UNKNOWN) และ 'hours_since_admit'.
+    """เพิ่มคอลัมน์ 'infection_origin' (CAI / HAI / UNKNOWN) และ 'days_since_admit'.
 
-    เกณฑ์: ส่งตรวจครั้งแรก >= hai_threshold_hours หลัง admit -> HAI มิฉะนั้น CAI.
     ถ้าไม่มีวันที่ admit ใช้ค่า missing_admit_as.
     """
     out = df.copy()
-    delta = out["collect_datetime"] - out["admit_datetime"]
-    hours = delta.dt.total_seconds() / 3600.0
-    out["hours_since_admit"] = hours
+    collect_day = pd.to_datetime(out["collect_datetime"], errors="coerce").dt.normalize()
+    admit_day = pd.to_datetime(out["admit_datetime"], errors="coerce").dt.normalize()
+    days = (collect_day - admit_day).dt.days
+    out["days_since_admit"] = days
 
-    def label(h: float) -> str:
-        if pd.isna(h):
+    def label(d) -> str:
+        if pd.isna(d):
             return missing_admit_as
-        return "HAI" if h >= hai_threshold_hours else "CAI"
+        return "HAI" if d >= hai_threshold_days else "CAI"
 
-    out["infection_origin"] = hours.map(label)
+    out["infection_origin"] = days.map(label)
     return out

@@ -85,9 +85,9 @@ st.header("3) เงื่อนไขการวิเคราะห์")
 conditions = _load_conditions()
 c1, c2, c3 = st.columns(3)
 with c1:
-    hai_hours = st.number_input(
-        "เกณฑ์ HAI (ชั่วโมงหลัง admit)", value=float(conditions["classification"]["hai_threshold_hours"]),
-        min_value=0.0, step=1.0,
+    hai_days = st.number_input(
+        "เกณฑ์ HAI (วันหลัง admit, >= = HAI)", value=int(conditions["classification"]["hai_threshold_days"]),
+        min_value=0, step=1,
     )
 with c2:
     min_iso = st.number_input(
@@ -98,7 +98,7 @@ with c3:
     do_dedup = st.checkbox(
         "First isolate per patient/species", value=bool(conditions["deduplication"]["enabled"]),
     )
-conditions["classification"]["hai_threshold_hours"] = hai_hours
+conditions["classification"]["hai_threshold_days"] = int(hai_days)
 conditions["reporting"]["min_isolates"] = int(min_iso)
 conditions["deduplication"]["enabled"] = do_dedup
 
@@ -125,7 +125,7 @@ if his_raw is not None and his_hn_col and his_admit_col:
 
 std_df = classify.classify_infection_origin(
     std_df,
-    hai_threshold_hours=hai_hours,
+    hai_threshold_days=int(hai_days),
     missing_admit_as=conditions["classification"]["missing_admit_as"],
 )
 
