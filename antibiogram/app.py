@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, intrinsic, loader, mapping, rollup
+from ab import antibiogram, classify, clean, config, dedup, dictionary, export, his_join, intrinsic, loader, mapping, rollup
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -105,6 +105,17 @@ conditions["deduplication"]["enabled"] = do_dedup
 # --- ประมวลผลข้อมูล -------------------------------------------------------
 std_df = loader.apply_mapping(raw_df, col_map, ab_cols)
 
+# กรองแถวที่ไม่ใช่เชื้อเพาะจริง (Gram stain/smear) ก่อน normalize
+_clean = conditions.get("cleaning", {})
+std_df, _dropped = clean.filter_culture_rows(
+    std_df,
+    exclude_substrings=tuple(_clean.get("drop_if_organism_contains", [".", " "])),
+    drop_blank=_clean.get("drop_if_organism_blank", True),
+)
+if _dropped:
+    st.info(f"ตัดแถวที่ไม่ใช่เชื้อเพาะ (Gram stain/smear/ว่าง) ออก {_dropped:,} แถว "
+            f"เหลือ {len(std_df):,} แถว")
+
 # normalize ชื่อเชื้อด้วย dictionary
 org_dict = dictionary.load_organism_dictionary()
 unknown_orgs = org_dict.unknown_values(std_df["organism"].dropna().unique())
@@ -178,9 +189,27 @@ matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
 
 st.dataframe(matrix, use_container_width=True)
 
-st.download_button(
-    "⬇️ ดาวน์โหลดผลเป็น Excel",
-    data=export.to_excel_bytes(matrix, long_form),
-    file_name="antibiogram.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-)
+organism_totals = work["report_organism"].value_counts().to_dict()
+scope_txt = ("Specimen: " + ", ".join(sel_spec[:3]) + (" ..." if len(sel_spec) > 3 else "")
+             + " | Ward: " + ("ทุก ward" if len(sel_ward) == len(wards) else ", ".join(sel_ward[:3]))
+             + " | " + ", ".join(sel_origin))
+
+c_dl1, c_dl2 = st.columns(2)
+with c_dl1:
+    st.download_button(
+        "⬇️ ดาวน์โหลด (รูปแบบ publish)",
+        data=export.to_publish_excel(
+            long_form, drug_name, organism_totals,
+            scope=scope_txt,
+            date_range=f"1 January – 31 December ({', '.join(sel_origin)})",
+        ),
+        file_name="antibiogram_publish.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+with c_dl2:
+    st.download_button(
+        "⬇️ ดาวน์โหลด (ตารางเรียบ)",
+        data=export.to_excel_bytes(matrix, long_form),
+        file_name="antibiogram.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
