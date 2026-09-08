@@ -84,6 +84,16 @@ norm_hn(s): เอาเฉพาะตัวเลข -> ถ้ายาว >= 
 - ผู้ใช้ยืนยัน: ใช้ **วันที่อย่างเดียว** ไม่ต้องคิดชั่วโมง -> เทียบส่วนต่างเป็นวันปฏิทิน
   (`วันที่ลงทะเบียน` มีแต่วันที่พอดีกับเกณฑ์นี้)
 
+## Intrinsic resistance (แสดง "R")
+- ตาราง `config/intrinsic_resistance.csv` (organism, drug, source) — คู่เชื้อ×ยาที่ดื้อโดยธรรมชาติ
+- **ตั้งต้นจากไฟล์ publish 2025** (ช่อง "R" 64 คู่ = ตารางที่ทีมใช้จริง ตรงกับ M100 Appendix B)
+  เช่น Klebsiella→Ampicillin, Pseudomonas→Ceftriaxone/Cefotaxime/SXT, Enterococcus→cephalosporins,
+  Stenotrophomonas→carbapenems/aminoglycosides, Proteus/Serratia→Colistin
+- โมดูล `ab/intrinsic.py` · จับคู่ด้วยชื่อมาตรฐาน (report_organism × standard drug)
+- **ข้อจำกัด**: ไฟล์ CLSI M100 Ed.36 (18.6MB) เกินลิมิต 10MB ของ connector + ตัวอ่านข้อความตัดจบ
+  ก่อนถึง Appendix B (หน้า 310) จึงยังอ่านตารางจาก M100 ตรงๆ ไม่ได้ — ถ้าต้องการ re-parse ตรงจาก
+  M100 ให้ export เฉพาะหน้า Appendix B (<10MB) มาไว้ใน Drive
+
 ## การรวมกลุ่มเชื้อ (rollup) เมื่อไม่ถึงเกณฑ์ — CLSI M39
 - เชื้อ n >= min (30) -> แถวของตัวเอง
 - เชื้อ n < min -> รวมเป็น "<Genus> species"; genus ยัง < min -> "Other <Family>"; ยังไม่พอ -> "Other organisms"

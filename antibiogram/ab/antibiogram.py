@@ -39,9 +39,14 @@ def compute_antibiogram(
     antibiotic_columns: list[str],
     conditions: dict,
     organism_field: str = "organism",
+    intrinsic=None,
+    drug_name: dict | None = None,
 ) -> pd.DataFrame:
     """คืนตาราง antibiogram แบบ long-form:
-        organism, antibiotic, n_tested, n_susceptible, pct_susceptible, reportable
+        organism, antibiotic, n_tested, n_susceptible, pct_susceptible, reportable, intrinsic
+
+    intrinsic  : IntrinsicTable (ถ้ามี) -> คู่ (เชื้อ x ยา) ที่ดื้อโดยธรรมชาติ = "R"
+    drug_name  : dict คอลัมน์ยา -> ชื่อยามาตรฐาน (ใช้จับคู่กับตาราง intrinsic)
 
     reportable = False ถ้าจำนวน isolate < min_isolates (ตาม M39 ไม่ควรรายงาน %S).
     """
@@ -49,9 +54,18 @@ def compute_antibiogram(
     min_isolates = conditions.get("reporting", {}).get("min_isolates", 30)
     classify = _build_result_classifier(susc)
 
+    drug_name = drug_name or {}
     rows = []
     for organism, group in df.groupby(organism_field):
         for ab in antibiotic_columns:
+            std_drug = drug_name.get(ab, ab)
+            if intrinsic is not None and intrinsic.is_intrinsic(organism, std_drug):
+                rows.append({
+                    "organism": organism, "antibiotic": ab,
+                    "n_tested": 0, "n_susceptible": 0,
+                    "pct_susceptible": None, "reportable": False, "intrinsic": True,
+                })
+                continue
             classified = group[ab].map(classify)
             n_tested = int(classified.notna().sum())
             n_susc = int((classified == "S").sum())
@@ -64,6 +78,7 @@ def compute_antibiogram(
                     "n_susceptible": n_susc,
                     "pct_susceptible": pct,
                     "reportable": n_tested >= min_isolates,
+                    "intrinsic": False,
                 }
             )
 
@@ -78,4 +93,9 @@ def to_matrix(antibiogram_long: pd.DataFrame, show_unreportable: bool = False) -
     df = antibiogram_long.copy()
     if not show_unreportable:
         df.loc[~df["reportable"], "pct_susceptible"] = pd.NA
+    # ช่อง intrinsic แสดงเป็น "R"
+    if "intrinsic" in df.columns:
+        df["cell"] = df["pct_susceptible"].astype(object)
+        df.loc[df["intrinsic"] == True, "cell"] = "R"  # noqa: E712
+        return df.pivot(index="organism", columns="antibiotic", values="cell")
     return df.pivot(index="organism", columns="antibiotic", values="pct_susceptible")

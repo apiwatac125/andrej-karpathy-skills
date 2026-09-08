@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, loader, mapping, rollup
+from ab import antibiogram, classify, config, dedup, dictionary, export, his_join, intrinsic, loader, mapping, rollup
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -165,7 +165,15 @@ if not ab_cols:
     st.stop()
 
 show_unreportable = st.checkbox("แสดงช่องที่จำนวนต่ำกว่าเกณฑ์ด้วย", value=False)
-long_form = antibiogram.compute_antibiogram(work, ab_cols, conditions, organism_field="report_organism")
+
+# intrinsic resistance (แสดง "R"): map คอลัมน์ยา -> ชื่อยามาตรฐาน แล้วเทียบตาราง
+abx_dict = dictionary.load_antibiotic_dictionary()
+drug_name = {ab: abx_dict.normalize(ab) for ab in ab_cols}
+intrinsic_tbl = intrinsic.load_intrinsic()
+long_form = antibiogram.compute_antibiogram(
+    work, ab_cols, conditions, organism_field="report_organism",
+    intrinsic=intrinsic_tbl, drug_name=drug_name,
+)
 matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
 
 st.dataframe(matrix, use_container_width=True)
