@@ -26,3 +26,28 @@ def filter_culture_rows(
         keep &= ~code.fillna("").str.contains(sub, regex=False)
     dropped = int((~keep).sum())
     return df[keep].copy(), dropped
+
+
+def filter_has_ast(
+    df: pd.DataFrame,
+    antibiotic_columns: list[str],
+    not_tested_values=("", "NT", "NA", "N/A", "-"),
+) -> tuple[pd.DataFrame, int]:
+    """เก็บเฉพาะแถวที่มีผลทดสอบความไวต่อยา (S/I/R) อย่างน้อย 1 ตัว.
+
+    เชื้อที่ไม่มีผล AST เลย (เช่น เชื้อรา/เชื้อที่ไม่ได้ทดสอบ) จะถูกตัดออก.
+    """
+    nt = {str(v).strip().upper() for v in not_tested_values}
+
+    def has_result(row) -> bool:
+        for c in antibiotic_columns:
+            v = row.get(c)
+            if v is None or (isinstance(v, float) and pd.isna(v)):
+                continue
+            if str(v).strip().upper() not in nt and str(v).strip() != "":
+                return True
+        return False
+
+    keep = df.apply(has_result, axis=1)
+    dropped = int((~keep).sum())
+    return df[keep].copy(), dropped

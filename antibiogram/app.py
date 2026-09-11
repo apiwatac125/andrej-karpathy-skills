@@ -15,7 +15,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, clean, config, dedup, dictionary, export, his_join, intrinsic, loader, mapping, rollup
+from ab import antibiogram, classify, clean, config, dedup, dictionary, export, grouping, his_join, intrinsic, loader, mapping, rollup
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -116,6 +116,13 @@ if _dropped:
     st.info(f"ตัดแถวที่ไม่ใช่เชื้อเพาะ (Gram stain/smear/ว่าง) ออก {_dropped:,} แถว "
             f"เหลือ {len(std_df):,} แถว")
 
+# ตัดเชื้อที่ไม่มีผลทดสอบความไวต่อยา (เช่น เชื้อรา/ไม่ได้ทดสอบ) ออก
+if ab_cols:
+    _nt = conditions.get("susceptibility", {}).get("not_tested_values", ["", "NT", "NA", "N/A", "-"])
+    std_df, _no_ast = clean.filter_has_ast(std_df, ab_cols, not_tested_values=_nt)
+    if _no_ast:
+        st.info(f"ตัดเชื้อที่ไม่มีผล AST ออก {_no_ast:,} แถว เหลือ {len(std_df):,} แถว")
+
 # normalize ชื่อเชื้อด้วย dictionary
 org_dict = dictionary.load_organism_dictionary()
 unknown_orgs = org_dict.unknown_values(std_df["organism"].dropna().unique())
@@ -125,6 +132,9 @@ if unknown_orgs:
 std_df["organism"] = std_df["organism"].map(
     lambda v: org_dict.normalize(v) if pd.notna(v) else v
 )
+
+# รวมเชื้อเป็นกลุ่มที่กำหนด (เช่น CoNS)
+std_df = grouping.apply_groups(std_df, organism_field="organism")
 
 # join วัน admit จากไฟล์ HIS (ถ้ามี) -> เติมคอลัมน์ admit_datetime
 if his_raw is not None and his_hn_col and his_admit_col:
