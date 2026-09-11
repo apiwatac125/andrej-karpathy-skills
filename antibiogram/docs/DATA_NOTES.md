@@ -96,7 +96,10 @@ norm_hn(s): เอาเฉพาะตัวเลข -> ถ้ายาว >= 
 
 ## การรวมกลุ่มเชื้อ (rollup) เมื่อไม่ถึงเกณฑ์ — CLSI M39
 - เชื้อ n >= min (30) -> แถวของตัวเอง
-- เชื้อ n < min -> รวมเป็น "<Genus> species"; genus ยัง < min -> "Other <Family>"; ยังไม่พอ -> "Other organisms"
+- เชื้อ n < min -> รวมเป็นกลุ่ม:
+  * family อยู่ในรายการ pool (default = Enterobacterales) -> "Other <Family>" (เช่น Other Enterobacterales)
+  * นอกนั้นแยกตาม genus -> "<Genus> species" (แสดงทุกกลุ่ม ไม่ยุบเป็น Other organisms)
+  * กลุ่มที่รวมไว้แล้ว เช่น CoNS -> คงชื่อกลุ่มเดิม (keep_groups)
 - เชื้อหลัก (primary) ที่ >= min แยกเป็นแถวของตัวเอง (ไม่ปนกับ "อื่นๆ") ส่วนเชื้อ < min
   ทุกตัวรวมตามลำดับ genus -> family -> Other (เช่น Citrobacter/Serratia < 30 -> "Other Enterobacterales")
 - `config/primary_organisms.csv` ใช้ระบุ genus/family ที่ถูกต้องของชื่อเชื้อ

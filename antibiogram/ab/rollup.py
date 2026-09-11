@@ -46,43 +46,42 @@ def _tax(species: str, primary: dict, taxonomy: dict) -> tuple[str, str | None]:
     return genus, taxonomy.get(genus)
 
 
+# family ที่รวมทั้ง family เป็นก้อนเดียว (เช่น Enterobacterales) แทนการแยกราย genus
+POOL_AT_FAMILY = {"Enterobacterales"}
+
+
 def build_report_mapping(
     counts: dict[str, int],
     min_isolates: int,
     primary: dict,
     taxonomy: dict,
+    keep_groups: set | None = None,
+    pool_at_family: set | None = None,
 ) -> dict[str, str]:
-    """คืน dict species -> ชื่อกลุ่มที่จะใช้รายงาน."""
+    """คืน dict species -> ชื่อกลุ่มที่จะใช้รายงาน.
+
+    - species >= min          -> ชื่อของตัวเอง
+    - species < min:
+        * ชื่อที่อยู่ใน keep_groups (เช่น CoNS ที่ถูกรวมไว้แล้ว) -> คงเดิม
+        * family อยู่ใน pool_at_family (เช่น Enterobacterales) -> "Other <Family>"
+        * มี genus                                            -> "<Genus> species"
+        * นอกนั้น                                             -> "Other organisms"
+    """
+    keep_groups = keep_groups or set()
+    pool_at_family = pool_at_family if pool_at_family is not None else POOL_AT_FAMILY
     report: dict[str, str] = {}
-    genus_pool: dict[str, int] = {}
-    genus_members: dict[str, set] = {}
-    genus_family: dict[str, str | None] = {}
 
     for sp, c in counts.items():
-        genus, family = _tax(sp, primary, taxonomy)
-        if c >= min_isolates:
+        if sp in keep_groups or c >= min_isolates:
             report[sp] = sp
             continue
-        genus_pool[genus] = genus_pool.get(genus, 0) + c
-        genus_members.setdefault(genus, set()).add(sp)
-        genus_family[genus] = family
-
-    family_pool: dict[str, int] = {}
-    family_members: dict[str, set] = {}
-    for genus, total in genus_pool.items():
-        if total >= min_isolates:
-            label = f"{genus.capitalize()} species"
-            for sp in genus_members[genus]:
-                report[sp] = label
+        genus, family = _tax(sp, primary, taxonomy)
+        if family in pool_at_family:
+            report[sp] = f"Other {family}"
+        elif genus:
+            report[sp] = f"{genus.capitalize()} species"
         else:
-            fam = genus_family.get(genus) or "__none__"
-            family_pool[fam] = family_pool.get(fam, 0) + total
-            family_members.setdefault(fam, set()).update(genus_members[genus])
-
-    for fam, total in family_pool.items():
-        label = f"Other {fam}" if (fam != "__none__" and total >= min_isolates) else "Other organisms"
-        for sp in family_members[fam]:
-            report[sp] = label
+            report[sp] = "Other organisms"
 
     return report
 
@@ -93,12 +92,13 @@ def apply_rollup(
     organism_field: str = "organism",
     primary: dict | None = None,
     taxonomy: dict | None = None,
+    keep_groups: set | None = None,
 ) -> pd.DataFrame:
     """เพิ่มคอลัมน์ 'report_organism' ให้ df ตามกติกา rollup."""
     primary = primary if primary is not None else load_primary()
     taxonomy = taxonomy if taxonomy is not None else load_taxonomy()
     counts = df[organism_field].value_counts().to_dict()
-    mapping = build_report_mapping(counts, min_isolates, primary, taxonomy)
+    mapping = build_report_mapping(counts, min_isolates, primary, taxonomy, keep_groups=keep_groups)
     out = df.copy()
     out["report_organism"] = out[organism_field].map(lambda s: mapping.get(s, s))
     return out

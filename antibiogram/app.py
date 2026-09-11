@@ -173,8 +173,10 @@ if do_dedup:
         work, scope=conditions["deduplication"]["scope"]
     )
 
-# รวมกลุ่มเชื้อที่ไม่ถึงเกณฑ์ (genus -> family) ตาม CLSI M39
-work = rollup.apply_rollup(work, int(min_iso), organism_field="organism")
+# รวมกลุ่มเชื้อที่ไม่ถึงเกณฑ์ (genus / Enterobacterales -> family) ตาม CLSI M39
+# CoNS ที่ถูกรวมไว้แล้วให้คงเป็นก้อนเดิม (ไม่ถูก re-roll)
+_keep = set(grouping.load_groups().values())
+work = rollup.apply_rollup(work, int(min_iso), organism_field="organism", keep_groups=_keep)
 
 st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {len(work):,} isolates "
            f"· กลุ่มเชื้อที่รายงาน {work['report_organism'].nunique()} กลุ่ม")
