@@ -2,8 +2,8 @@ raw_name,standard_name
 *G+BUN,Unidentified Gram Positive Bacilli
 *G+CUN,Unidentified Gram Positive Cocci
 ACGSPP,Actinotignum species
-ACNB1N,Acinetobacter baumannii 1
-ACNBMC,Acinetobacter baumannii complex
+ACNB1N,Acinetobacter baumannii
+ACNBMC,Acinetobacter baumannii
 ACNBMN,Acinetobacter baumannii
 ACNBRZ,Acinetobacter bereziniae
 ACNJHN,Acinetobacter johnsonii
@@ -53,7 +53,7 @@ CRNPRP,Corynebacterium propinquum
 CRNPSD,Corynebacterium pseudodiphtheriticum
 CRNSML,Corynebacterium simulans
 CRNSPP,Corynebacterium species
-CRNSTG,Corynebacterium striatum group
+CRNSTG,Corynebacterium striatum
 CRNSTR,Corynebacterium striatum
 CRPNFR,Cryptococcus neoformans
 CTRDVR,Citrobacter koseri
@@ -63,14 +63,14 @@ DRBHMN,Dermabacter hominis
 ELZANP,Elizabethkingia anophelis
 ENCAVM,Enterococcus avium
 ENCCSS,Enterococcus casseliflavus
-ENCF2M,Enterococcus faecium 2
+ENCF2M,Enterococcus faecium
 ENCFCL,Enterococcus faecalis
 ENCFCM,Enterococcus faecium
 ENCHRA,Enterococcus hirae
 ENTARG,Klebsiella(Enterobacter) aerogenes
 ENTBGN,Enterobacter bugandensis
 ENTCLC,Enterobacter cloacae
-ENTCLX,Enterobacter cloacae complex
+ENTCLX,Enterobacter cloacae
 ENTHRM,Enterobacter hormaechei
 ENTSPP,Enterobacter species
 ESCCLI,Escherichia coli
@@ -79,9 +79,9 @@ HMPINF,Haemophilus influenzae
 HMPPRN,Haemophilus parainfluenzae
 KCRRHZ,Kocuria rhizophila
 KLBOXT,Klebsiella oxytoca
-KLBP1M,Klebsiella pneumoniae 1
+KLBP1M,Klebsiella pneumoniae
 KLBPNM,Klebsiella pneumoniae
-KLBPNP,Klebsiella pneumoniae ssp pneumoniae
+KLBPNP,Klebsiella pneumoniae
 KLBVRC,Klebsiella variicola
 LCTCNF,Weissella confusa
 LCTCRS,Lactobacillus crispatus
@@ -100,7 +100,7 @@ PRTMRB,Proteus mirabilis
 PRTVLG,Proteus vulgaris
 PRVRTT,Providencia rettgeri
 PRVSTR,Providencia stuartii
-PSDA1G,Pseudomonas aeruginosa 1
+PSDA1G,Pseudomonas aeruginosa
 PSDACV,Delftia acidovorans
 PSDALG,Shewanella algae
 PSDARG,Pseudomonas aeruginosa
@@ -119,13 +119,13 @@ SRRMRC,Serratia marcescens
 SRRNMT,Serratia nematodiphila
 SRRSPP,Serratia species
 STMMCL,Rothia mucilaginosa
-STPA+S,Staphylococcus aureus (iMLSB resistant strain)
-STPA-A,Stap. aureus complex (S.argenteus)_
-STPA-X,Staphylococcus aureus complex_
-STPACA,Staphylococcus aureus complex (S.argenteus)
+STPA+S,Staphylococcus aureus
+STPA-A,Staphylococcus aureus
+STPA-X,Staphylococcus aureus
+STPACA,Staphylococcus aureus
 STPARS,Staphylococcus aureus
 STPART,Staphylococcus argenteus
-STPARX,Staphylococcus aureus complex
+STPARX,Staphylococcus aureus
 STPCHN,Staphylococcus cohnii
 STPCNG,Coagulase Negative Staphylococci
 STPCPI,Staphylococcus capitis
@@ -142,7 +142,7 @@ STPPTK,Staphylococcus pettenkoferi
 STPSPR,Staphylococcus saprophyticus
 STPURL,Staphylococcus ureilyticus
 STPWRN,Staphylococcus warneri
-STTA-L,Streptococcus agalactiae_
+STTA-L,Streptococcus agalactiae (Strep. Group B)
 STTAGL,Streptococcus agalactiae (Strep. Group B)
 STTANG,Streptococcus anginosus
 STTBVL,Streptococcus gallolyticus
@@ -153,7 +153,7 @@ STTIFR,Streptococcus infantarius
 STTMT0,Streptococcus mitis group
 STTMTO,Streptococcus mitis/oralis
 STTMTS,Streptococcus mitis
-STTP-N,Streptococcus pyogenes_
+STTP-N,Streptococcus pyogenes (Strep. group A)
 STTPGN,Streptococcus pyogenes (Strep. group A)
 STTPNM,Streptococcus pneumoniae
 STTPSG,Streptococcus parasanguinis
