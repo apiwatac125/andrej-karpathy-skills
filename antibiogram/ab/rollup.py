@@ -5,8 +5,11 @@
 - เชื้อที่ n < min            -> รวมเป็น "<Genus> species"
 - genus ที่รวมแล้วยัง < min   -> รวมเป็น "Other <Family>"
 - family ที่ยัง < min         -> "Other organisms"
-- เชื้อหลัก (primary จาก publish) ถ้า < min จะรวมได้แค่ระดับ genus ของตัวเอง
-  เท่านั้น (บังคับให้มีแถว "<Genus> species") ไม่ถูกโยนลงถัง Other รวมกับเชื้ออื่น
+
+เชื้อหลักที่ >= min จะแยกเป็นแถวของตัวเองอยู่แล้ว (จึงไม่ปนกับ "อื่นๆ")
+ส่วนเชื้อ < min ทุกตัว (รวมเชื้อหลัก) จะ rollup ตามลำดับ genus -> family -> Other
+เช่น Citrobacter/Serratia ที่ < 30 จะรวมเป็น "Other Enterobacterales".
+primary_organisms.csv ใช้เพื่อระบุ genus/family ที่ถูกต้องของชื่อเชื้อเท่านั้น.
 """
 
 from __future__ import annotations
@@ -53,7 +56,6 @@ def build_report_mapping(
     report: dict[str, str] = {}
     genus_pool: dict[str, int] = {}
     genus_members: dict[str, set] = {}
-    genus_has_primary: dict[str, bool] = {}
     genus_family: dict[str, str | None] = {}
 
     for sp, c in counts.items():
@@ -63,13 +65,12 @@ def build_report_mapping(
             continue
         genus_pool[genus] = genus_pool.get(genus, 0) + c
         genus_members.setdefault(genus, set()).add(sp)
-        genus_has_primary[genus] = genus_has_primary.get(genus, False) or (sp in primary)
         genus_family[genus] = family
 
     family_pool: dict[str, int] = {}
     family_members: dict[str, set] = {}
     for genus, total in genus_pool.items():
-        if total >= min_isolates or genus_has_primary.get(genus):
+        if total >= min_isolates:
             label = f"{genus.capitalize()} species"
             for sp in genus_members[genus]:
                 report[sp] = label

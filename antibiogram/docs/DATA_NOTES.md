@@ -97,8 +97,9 @@ norm_hn(s): เอาเฉพาะตัวเลข -> ถ้ายาว >= 
 ## การรวมกลุ่มเชื้อ (rollup) เมื่อไม่ถึงเกณฑ์ — CLSI M39
 - เชื้อ n >= min (30) -> แถวของตัวเอง
 - เชื้อ n < min -> รวมเป็น "<Genus> species"; genus ยัง < min -> "Other <Family>"; ยังไม่พอ -> "Other organisms"
-- **เชื้อหลัก (primary)** ดึงจาก publish (แก้ได้ที่ `config/primary_organisms.csv`) ถ้า < min
-  จะรวมได้แค่ระดับ genus ของตัวเอง ("<Genus> species") ไม่ถูกโยนลงถัง Other รวมกับเชื้ออื่น
+- เชื้อหลัก (primary) ที่ >= min แยกเป็นแถวของตัวเอง (ไม่ปนกับ "อื่นๆ") ส่วนเชื้อ < min
+  ทุกตัวรวมตามลำดับ genus -> family -> Other (เช่น Citrobacter/Serratia < 30 -> "Other Enterobacterales")
+- `config/primary_organisms.csv` ใช้ระบุ genus/family ที่ถูกต้องของชื่อเชื้อ
 - taxonomy genus->family ที่ `config/taxonomy.csv` · โมดูล `ab/rollup.py`
 
 ## เกณฑ์ที่ยืนยันแล้ว
