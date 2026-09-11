@@ -75,8 +75,8 @@ def to_publish_excel(
         std = drug_name.get(r["antibiotic"], r["antibiotic"])
         if bool(r.get("intrinsic")):
             val = "R"
-        elif r["reportable"]:
-            val = r["pct_susceptible"]
+        elif r["reportable"] and pd.notna(r["pct_susceptible"]):
+            val = int(round(float(r["pct_susceptible"])))
         else:
             val = None
         cell[(r["organism"], std)] = (val, int(r["n_tested"]))

@@ -73,7 +73,7 @@ def compute_antibiogram(
             classified = group[ab].map(fn)
             n_tested = int(classified.notna().sum())
             n_susc = int((classified == "S").sum())
-            pct = round(100.0 * n_susc / n_tested, 1) if n_tested else None
+            pct = int(round(100.0 * n_susc / n_tested)) if n_tested else None
             rows.append(
                 {
                     "organism": organism,
