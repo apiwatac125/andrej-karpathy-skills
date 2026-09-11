@@ -53,6 +53,9 @@ def compute_antibiogram(
     susc = conditions.get("susceptibility", {})
     min_isolates = conditions.get("reporting", {}).get("min_isolates", 30)
     classify = _build_result_classifier(susc)
+    # ยาที่คิด %I เป็น susceptible (เช่น Colistin) -> classifier แยก
+    i_as_s_drugs = {str(x).strip().upper() for x in susc.get("intermediate_as_susceptible_drugs", [])}
+    classify_i = _build_result_classifier({**susc, "count_intermediate_as_susceptible": True})
 
     drug_name = drug_name or {}
     rows = []
@@ -66,7 +69,8 @@ def compute_antibiogram(
                     "pct_susceptible": None, "reportable": False, "intrinsic": True,
                 })
                 continue
-            classified = group[ab].map(classify)
+            fn = classify_i if str(std_drug).strip().upper() in i_as_s_drugs else classify
+            classified = group[ab].map(fn)
             n_tested = int(classified.notna().sum())
             n_susc = int((classified == "S").sum())
             pct = round(100.0 * n_susc / n_tested, 1) if n_tested else None

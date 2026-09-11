@@ -32,5 +32,7 @@ susceptibility:
   resistant_values: [R, RESISTANT]
   # CLSI M39 รายงาน %S เท่านั้น -> ปกติไม่นับ I เป็น susceptible
   count_intermediate_as_susceptible: false
+  # ยกเว้นยาเหล่านี้ให้คิด %I เป็น susceptible (เช่น Colistin ที่ CLSI เหลือแต่ I/R)
+  intermediate_as_susceptible_drugs: [Colistin]
   # ค่าที่ถือว่า "ไม่ได้ทดสอบ" (ไม่นับเป็นตัวหาร) เช่น ช่องว่าง หรือ NA
   not_tested_values: ["", "NT", "NA", "N/A", "-"]
