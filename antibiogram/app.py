@@ -27,13 +27,13 @@ def _load_conditions() -> dict:
 
 # --- 1. อัปโหลดไฟล์ -------------------------------------------------------
 st.header("1) อัปโหลดไฟล์ข้อมูล (Excel)")
-uploaded = st.file_uploader("เลือกไฟล์ .xlsx", type=["xlsx", "xls"])
+uploaded = st.file_uploader("เลือกไฟล์ข้อมูลแลป (.xlsx / .xls / .csv)", type=["xlsx", "xls", "csv"])
 
 if uploaded is None:
     st.info("อัปโหลดไฟล์เพื่อเริ่มต้น")
     st.stop()
 
-raw_df = loader.read_excel(uploaded)
+raw_df = loader.read_table(uploaded)
 st.success(f"อ่านข้อมูลได้ {len(raw_df):,} แถว, {len(raw_df.columns)} คอลัมน์")
 with st.expander("ดูตัวอย่างข้อมูลดิบ"):
     st.dataframe(raw_df.head(20))
@@ -63,11 +63,11 @@ ab_cols = st.multiselect(
 # --- 2b. ไฟล์ HIS (วัน admit) สำหรับ CAI/HAI ------------------------------
 st.header("2b) ไฟล์ HIS สำหรับแยก CAI/HAI (ไม่บังคับ)")
 st.caption("ไฟล์แลปไม่มีวัน admit — อัปโหลดรายงาน HIS (เช่น QR-10-020) เพื่อ join ด้วย HN")
-his_file = st.file_uploader("เลือกไฟล์ HIS .xlsx/.xls", type=["xlsx", "xls"], key="his")
+his_file = st.file_uploader("เลือกไฟล์ HIS (.xlsx / .xls / .csv)", type=["xlsx", "xls", "csv"], key="his")
 his_hn_col = his_admit_col = None
 his_raw = None
 if his_file is not None:
-    his_raw = loader.read_excel(his_file)
+    his_raw = loader.read_table(his_file)
     his_cols = list(his_raw.columns.astype(str))
     h1, h2 = st.columns(2)
     with h1:

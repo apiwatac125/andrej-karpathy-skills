@@ -14,6 +14,26 @@ def read_excel(file, sheet_name: int | str = 0) -> pd.DataFrame:
     return pd.read_excel(file, sheet_name=sheet_name, dtype=object)
 
 
+def read_table(file, sheet_name: int | str = 0) -> pd.DataFrame:
+    """อ่านไฟล์ตาราง รองรับทั้ง .xlsx/.xls และ .csv (เดา encoding ไทยให้).
+
+    file = path หรือ uploaded file object (มี .name).
+    """
+    name = str(getattr(file, "name", file)).lower()
+    if name.endswith(".csv"):
+        for enc in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
+            try:
+                if hasattr(file, "seek"):
+                    file.seek(0)
+                return pd.read_csv(file, dtype=object, encoding=enc)
+            except UnicodeDecodeError:
+                continue
+        if hasattr(file, "seek"):
+            file.seek(0)
+        return pd.read_csv(file, dtype=object, encoding="latin-1", encoding_errors="replace")
+    return pd.read_excel(file, sheet_name=sheet_name, dtype=object)
+
+
 def apply_mapping(
     df: pd.DataFrame,
     mapping: dict[str, str | None],
