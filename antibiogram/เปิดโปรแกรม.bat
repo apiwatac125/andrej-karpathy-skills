@@ -18,10 +18,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM --- ติดตั้งไลบรารีถ้ายังไม่มี (เช็คจาก streamlit) ---
-python -c "import streamlit" >nul 2>&1
+REM --- ตรวจ/ติดตั้งไลบรารีให้ครบทุกครั้ง (ครั้งแรกช้าหน่อย ครั้งต่อไปเร็ว) ---
+python -c "import streamlit, pandas, openpyxl, yaml" >nul 2>&1
 if errorlevel 1 (
-    echo [*] กำลังติดตั้งไลบรารีครั้งแรก... รอสักครู่
+    echo [*] กำลังติดตั้ง/อัปเดตไลบรารี... รอสักครู่
     python -m pip install -r requirements.txt
     echo.
 )
