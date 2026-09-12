@@ -29,7 +29,8 @@ def build_admit_lookup(
     คืนทุก admission (ยังไม่ยุบ) เพื่อให้เลือก admission ที่ตรงกับวันส่งตรวจภายหลัง.
     """
     out = pd.DataFrame()
-    out["hn_norm"] = his_df[hn_col].map(norm_hn)
+    # astype(object) กันชนิดไม่ตรง (pandas 3.x อ่าน CSV เป็น StringDtype)
+    out["hn_norm"] = his_df[hn_col].map(norm_hn).astype(object)
     out["admit_datetime"] = pd.to_datetime(
         his_df[admit_col], format=admit_format, errors="coerce"
     )
@@ -49,7 +50,7 @@ def attach_admit(
     ใช้ merge_asof (backward) จับคู่ตามเวลาในแต่ละ HN.
     """
     left = lab_df.copy()
-    left["hn_norm"] = left[lab_hn_col].map(norm_hn)
+    left["hn_norm"] = left[lab_hn_col].map(norm_hn).astype(object)
     left["_row"] = range(len(left))
 
     # merge_asof ต้องเรียงตามคีย์เวลา
