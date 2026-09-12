@@ -27,6 +27,7 @@ PROFILES_PATH = CONFIG_DIR / "column_profiles.json"
 IDENTITY_FIELDS = [
     "hn",
     "organism",
+    "organism_code",
     "specimen",
     "ward",
     "admit_datetime",
@@ -37,6 +38,8 @@ IDENTITY_FIELDS = [
 SYNONYMS: dict[str, list[str]] = {
     "hn": ["hn", "patient", "รหัสผู้ป่วย", "เลขที่ผู้ป่วย", "an"],
     "organism": ["organism", "เชื้อ", "bacteria", "microorganism", "org"],
+    # คอลัมน์โค้ดเชื้อ (ใช้กรอง Gram stain — ค่าที่มี "." / ช่องว่าง)
+    "organism_code": ["organism", "org code", "รหัสเชื้อ"],
     "specimen": ["csource", "specimen", "sample", "สิ่งส่งตรวจ", "sample_type", "source"],
     "ward": ["cward", "ward", "หอผู้ป่วย", "location", "unit", "หน่วยงาน"],
     "admit_datetime": ["admit", "admission", "วันที่รับ", "date_admit", "adm_date"],

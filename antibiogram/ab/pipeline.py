@@ -45,8 +45,11 @@ def prepare(
     std = loader.apply_mapping(micro_df, col_map, ab_cols)
 
     _clean = conditions.get("cleaning", {})
+    # กรอง Gram stain จากคอลัมน์โค้ด (ถ้าเลือกไว้) ไม่งั้นใช้คอลัมน์ชื่อเชื้อ
+    code_field = "organism_code" if col_map.get("organism_code") else "organism"
     std, _ = clean.filter_culture_rows(
         std,
+        organism_field=code_field,
         exclude_substrings=tuple(_clean.get("drop_if_organism_contains", [".", " "])),
         drop_blank=_clean.get("drop_if_organism_blank", True),
     )

@@ -19,8 +19,11 @@ def classify_infection_origin(
     ถ้าไม่มีวันที่ admit ใช้ค่า missing_admit_as.
     """
     out = df.copy()
-    collect_day = pd.to_datetime(out["collect_datetime"], errors="coerce").dt.normalize()
-    admit_day = pd.to_datetime(out["admit_datetime"], errors="coerce").dt.normalize()
+    # ถ้าไม่มีคอลัมน์ (เช่นไม่ได้ join HIS) ให้ถือว่าไม่มีค่า (NaT)
+    collect_raw = out["collect_datetime"] if "collect_datetime" in out.columns else pd.NaT
+    admit_raw = out["admit_datetime"] if "admit_datetime" in out.columns else pd.NaT
+    collect_day = pd.to_datetime(pd.Series(collect_raw, index=out.index), errors="coerce").dt.normalize()
+    admit_day = pd.to_datetime(pd.Series(admit_raw, index=out.index), errors="coerce").dt.normalize()
     days = (collect_day - admit_day).dt.days
     out["days_since_admit"] = days
 

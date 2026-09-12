@@ -44,6 +44,15 @@ columns = list(raw_df.columns.astype(str))
 st.header("2) จับคู่คอลัมน์")
 guessed = mapping.guess_mapping(columns)
 
+FIELD_LABELS = {
+    "hn": "HN (รหัสผู้ป่วย)",
+    "organism": "ชื่อเชื้อ (ใช้วิเคราะห์/รายงาน)",
+    "organism_code": "โค้ดเชื้อ (ใช้กรอง Gram stain — ไม่บังคับ)",
+    "specimen": "สิ่งส่งตรวจ (specimen)",
+    "ward": "หอผู้ป่วย (ward)",
+    "admit_datetime": "วันที่ admit (ปกติมาจากไฟล์ HIS)",
+    "collect_datetime": "วันที่ส่งตรวจ",
+}
 col_map: dict[str, str | None] = {}
 cols = st.columns(3)
 for i, field in enumerate(mapping.IDENTITY_FIELDS):
@@ -51,7 +60,7 @@ for i, field in enumerate(mapping.IDENTITY_FIELDS):
         options = ["(ไม่มี)"] + columns
         default = guessed.get(field)
         idx = options.index(default) if default in options else 0
-        chosen = st.selectbox(field, options, index=idx, key=f"map_{field}")
+        chosen = st.selectbox(FIELD_LABELS.get(field, field), options, index=idx, key=f"map_{field}")
         col_map[field] = None if chosen == "(ไม่มี)" else chosen
 
 default_ab = mapping.guess_antibiotic_columns(columns, col_map)
