@@ -38,16 +38,13 @@ def filter_has_ast(
     เชื้อที่ไม่มีผล AST เลย (เช่น เชื้อรา/เชื้อที่ไม่ได้ทดสอบ) จะถูกตัดออก.
     """
     nt = {str(v).strip().upper() for v in not_tested_values}
+    cols = [c for c in antibiotic_columns if c in df.columns]
+    if not cols:
+        return df.copy(), 0
 
-    def has_result(row) -> bool:
-        for c in antibiotic_columns:
-            v = row.get(c)
-            if v is None or (isinstance(v, float) and pd.isna(v)):
-                continue
-            if str(v).strip().upper() not in nt and str(v).strip() != "":
-                return True
-        return False
-
-    keep = df.apply(has_result, axis=1)
+    # vectorized: มีผลอย่างน้อย 1 ยา = ไม่ว่างและไม่ใช่ค่า not-tested
+    norm = df[cols].astype("string").apply(lambda s: s.str.strip().str.upper())
+    has = norm.notna() & (norm != "") & (~norm.isin(nt))
+    keep = has.any(axis=1)
     dropped = int((~keep).sum())
     return df[keep].copy(), dropped

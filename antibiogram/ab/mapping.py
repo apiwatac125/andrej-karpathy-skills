@@ -37,10 +37,10 @@ IDENTITY_FIELDS = [
 SYNONYMS: dict[str, list[str]] = {
     "hn": ["hn", "patient", "รหัสผู้ป่วย", "เลขที่ผู้ป่วย", "an"],
     "organism": ["organism", "เชื้อ", "bacteria", "microorganism", "org"],
-    "specimen": ["specimen", "sample", "สิ่งส่งตรวจ", "sample_type", "source"],
-    "ward": ["ward", "หอผู้ป่วย", "location", "unit", "หน่วยงาน"],
+    "specimen": ["csource", "specimen", "sample", "สิ่งส่งตรวจ", "sample_type", "source"],
+    "ward": ["cward", "ward", "หอผู้ป่วย", "location", "unit", "หน่วยงาน"],
     "admit_datetime": ["admit", "admission", "วันที่รับ", "date_admit", "adm_date"],
-    "collect_datetime": ["collect", "ส่งตรวจ", "received", "specimen date", "specimen_date", "sample date", "sample_date", "รับสิ่งส่งตรวจ", "order date"],
+    "collect_datetime": ["spcdate", "collect", "ส่งตรวจ", "received", "specimen date", "specimen_date", "sample date", "sample_date", "รับสิ่งส่งตรวจ", "order date"],
 }
 
 
@@ -50,21 +50,40 @@ def guess_mapping(columns: list[str]) -> dict[str, str | None]:
     result: dict[str, str | None] = {}
     for field, keys in SYNONYMS.items():
         match = None
+        # 1) exact match ก่อน (แม่นกว่า เช่น ORGANISM ไม่ใช่ SORGANISM)
         for key in keys:
-            for low, original in lowered.items():
-                if key.lower() in low:
-                    match = original
-                    break
-            if match:
+            if key.lower() in lowered:
+                match = lowered[key.lower()]
                 break
+        # 2) ค่อย substring match
+        if not match:
+            for key in keys:
+                for low, original in lowered.items():
+                    if key.lower() in low:
+                        match = original
+                        break
+                if match:
+                    break
         result[field] = match
     return result
 
 
 def guess_antibiotic_columns(columns: list[str], mapping: dict[str, str | None]) -> list[str]:
-    """คอลัมน์ที่เหลือ (ไม่ใช่ identity fields) เดาว่าเป็นคอลัมน์ผลยา."""
+    """เดาคอลัมน์ผลยา: เลือกเฉพาะคอลัมน์ที่รู้จักใน dictionary ยา (โค้ด/ชื่อยา).
+
+    ถ้าไม่มีคอลัมน์ไหนตรง dictionary เลย จะ fallback เป็นคอลัมน์ที่เหลือทั้งหมด.
+    """
     used = {v for v in mapping.values() if v}
-    return [c for c in columns if c not in used]
+    rest = [c for c in columns if c not in used]
+    try:
+        from .dictionary import load_antibiotic_dictionary, _normalize
+        abx = load_antibiotic_dictionary()
+        known = [c for c in rest if _normalize(c) in abx._mapping]
+        if known:
+            return known
+    except Exception:
+        pass
+    return rest
 
 
 def load_profiles(path: Path = PROFILES_PATH) -> dict:

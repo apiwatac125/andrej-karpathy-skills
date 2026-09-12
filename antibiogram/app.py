@@ -12,10 +12,9 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import streamlit as st
 
-from ab import antibiogram, classify, clean, config, dedup, dictionary, export, grouping, his_join, intrinsic, loader, mapping, rollup
+from ab import config, export, loader, mapping, pipeline
 
 st.set_page_config(page_title="Antibiogram (CLSI M39)", layout="wide")
 st.title("🧫 Antibiogram Generator (CLSI M39)")
@@ -102,53 +101,18 @@ conditions["classification"]["hai_threshold_days"] = int(hai_days)
 conditions["reporting"]["min_isolates"] = int(min_iso)
 conditions["deduplication"]["enabled"] = do_dedup
 
-# --- ประมวลผลข้อมูล -------------------------------------------------------
-std_df = loader.apply_mapping(raw_df, col_map, ab_cols)
+if not ab_cols:
+    st.error("ยังไม่ได้เลือกคอลัมน์ผลยา")
+    st.stop()
 
-# กรองแถวที่ไม่ใช่เชื้อเพาะจริง (Gram stain/smear) ก่อน normalize
-_clean = conditions.get("cleaning", {})
-std_df, _dropped = clean.filter_culture_rows(
-    std_df,
-    exclude_substrings=tuple(_clean.get("drop_if_organism_contains", [".", " "])),
-    drop_blank=_clean.get("drop_if_organism_blank", True),
+# --- ประมวลผล: prepare (map -> clean -> normalize -> group -> join HIS -> classify) ---
+his_an_col = "AN" if (his_raw is not None and "AN" in his_raw.columns) else None
+std_df, steps = pipeline.prepare(
+    raw_df, col_map, ab_cols, conditions,
+    his_df=his_raw, his_hn_col=his_hn_col, his_admit_col=his_admit_col, his_an_col=his_an_col,
 )
-if _dropped:
-    st.info(f"ตัดแถวที่ไม่ใช่เชื้อเพาะ (Gram stain/smear/ว่าง) ออก {_dropped:,} แถว "
-            f"เหลือ {len(std_df):,} แถว")
-
-# ตัดเชื้อที่ไม่มีผลทดสอบความไวต่อยา (เช่น เชื้อรา/ไม่ได้ทดสอบ) ออก
-if ab_cols:
-    _nt = conditions.get("susceptibility", {}).get("not_tested_values", ["", "NT", "NA", "N/A", "-"])
-    std_df, _no_ast = clean.filter_has_ast(std_df, ab_cols, not_tested_values=_nt)
-    if _no_ast:
-        st.info(f"ตัดเชื้อที่ไม่มีผล AST ออก {_no_ast:,} แถว เหลือ {len(std_df):,} แถว")
-
-# normalize ชื่อเชื้อด้วย dictionary
-org_dict = dictionary.load_organism_dictionary()
-unknown_orgs = org_dict.unknown_values(std_df["organism"].dropna().unique())
-if unknown_orgs:
-    st.warning(f"พบชื่อเชื้อที่ยังไม่มีใน dictionary {len(unknown_orgs)} รายการ: "
-               + ", ".join(unknown_orgs[:20]) + (" ..." if len(unknown_orgs) > 20 else ""))
-std_df["organism"] = std_df["organism"].map(
-    lambda v: org_dict.normalize(v) if pd.notna(v) else v
-)
-
-# รวมเชื้อเป็นกลุ่มที่กำหนด (เช่น CoNS)
-std_df = grouping.apply_groups(std_df, organism_field="organism")
-
-# join วัน admit จากไฟล์ HIS (ถ้ามี) -> เติมคอลัมน์ admit_datetime
-if his_raw is not None and his_hn_col and his_admit_col:
-    admit_lookup = his_join.build_admit_lookup(his_raw, his_hn_col, his_admit_col)
-    std_df = std_df.drop(columns=["admit_datetime"], errors="ignore")
-    std_df = his_join.attach_admit(std_df, admit_lookup)
-    matched = std_df["admit_datetime"].notna().sum()
-    st.success(f"join HIS สำเร็จ: จับคู่วัน admit ได้ {matched:,}/{len(std_df):,} isolates")
-
-std_df = classify.classify_infection_origin(
-    std_df,
-    hai_threshold_days=int(hai_days),
-    missing_admit_as=conditions["classification"]["missing_admit_as"],
-)
+st.info(f"culture {steps.get('after_culture_filter', 0):,} → มีผล AST {steps.get('after_ast_filter', 0):,} isolates"
+        + (f" · จับคู่ admit จาก HIS ได้ {steps['admit_matched']:,}" if "admit_matched" in steps else ""))
 
 # --- 4. Filters -----------------------------------------------------------
 st.header("4) เลือกข้อมูลที่จะนำมาวิเคราะห์")
@@ -162,46 +126,22 @@ with f2:
 with f3:
     sel_origin = st.multiselect("CAI / HAI", ["CAI", "HAI", "UNKNOWN"], default=["CAI", "HAI"])
 
-work = std_df[
-    std_df["specimen"].isin(sel_spec)
-    & std_df["ward"].isin(sel_ward)
-    & std_df["infection_origin"].isin(sel_origin)
-].copy()
-
-if do_dedup:
-    work = dedup.first_isolate_per_patient(
-        work, scope=conditions["deduplication"]["scope"]
-    )
-
-# รวมกลุ่มเชื้อที่ไม่ถึงเกณฑ์ (genus / Enterobacterales -> family) ตาม CLSI M39
-# CoNS ที่ถูกรวมไว้แล้วให้คงเป็นก้อนเดิม (ไม่ถูก re-roll)
-_keep = set(grouping.load_groups().values())
-work = rollup.apply_rollup(work, int(min_iso), organism_field="organism", keep_groups=_keep)
-
-st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {len(work):,} isolates "
-           f"· กลุ่มเชื้อที่รายงาน {work['report_organism'].nunique()} กลุ่ม")
-
 # --- 5. ผลลัพธ์ -----------------------------------------------------------
 st.header("5) ผลลัพธ์ Antibiogram")
-if not ab_cols:
-    st.error("ยังไม่ได้เลือกคอลัมน์ผลยา")
-    st.stop()
-
 show_unreportable = st.checkbox("แสดงช่องที่จำนวนต่ำกว่าเกณฑ์ด้วย", value=False)
 
-# intrinsic resistance (แสดง "R"): map คอลัมน์ยา -> ชื่อยามาตรฐาน แล้วเทียบตาราง
-abx_dict = dictionary.load_antibiotic_dictionary()
-drug_name = {ab: abx_dict.normalize(ab) for ab in ab_cols}
-intrinsic_tbl = intrinsic.load_intrinsic()
-long_form = antibiogram.compute_antibiogram(
-    work, ab_cols, conditions, organism_field="report_organism",
-    intrinsic=intrinsic_tbl, drug_name=drug_name,
+res = pipeline.finalize(
+    std_df, ab_cols, conditions,
+    specimens=sel_spec, wards=sel_ward, origins=sel_origin,
+    show_unreportable=show_unreportable, steps=steps,
 )
-matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
+long_form, matrix, drug_name, organism_totals = res.long_form, res.matrix, res.drug_name, res.totals
 
-st.dataframe(matrix, use_container_width=True)
+st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {res.steps['after_dedup']:,} isolates "
+           f"· กลุ่มเชื้อที่รายงาน {len(organism_totals)} กลุ่ม")
+# แปลงเป็น string ก่อนแสดง (ตารางมีทั้งตัวเลขและ "R" ปนกัน -> Arrow ต้องการชนิดเดียว)
+st.dataframe(matrix.fillna("").astype(str), use_container_width=True)
 
-organism_totals = work["report_organism"].value_counts().to_dict()
 scope_txt = ("Specimen: " + ", ".join(sel_spec[:3]) + (" ..." if len(sel_spec) > 3 else "")
              + " | Ward: " + ("ทุก ward" if len(sel_ward) == len(wards) else ", ".join(sel_ward[:3]))
              + " | " + ", ".join(sel_origin))

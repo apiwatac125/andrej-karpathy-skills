@@ -34,7 +34,8 @@ def apply_mapping(
 
     # แปลงคอลัมน์วันที่เป็น datetime (พยายามเดารูปแบบอัตโนมัติ)
     for dt_field in ("admit_datetime", "collect_datetime"):
-        out[dt_field] = pd.to_datetime(out[dt_field], errors="coerce")
+        if dt_field in out.columns:
+            out[dt_field] = pd.to_datetime(out[dt_field], errors="coerce")
 
     return out
 
