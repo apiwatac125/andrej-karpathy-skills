@@ -56,6 +56,7 @@ def to_publish_excel(
     date_range: str = "",
     organism_order: list[str] | None = None,
     classes_path: Path = CLASSES_PATH,
+    mdr_df: pd.DataFrame | None = None,
 ) -> bytes:
     classes = _load_classes(classes_path)
 
@@ -159,6 +160,23 @@ def to_publish_excel(
     ws.column_dimensions["B"].width = 8
     for idx in range(len(ordered)):
         ws.column_dimensions[get_column_letter(3 + idx)].width = 6
+
+    # sheet MDR (ถ้ามี)
+    if mdr_df is not None and not mdr_df.empty:
+        ws2 = wb.create_sheet("MDR")
+        ws2.cell(row=1, column=1, value="จำนวน isolate ตาม MDR type").font = Font(bold=True)
+        headers = list(mdr_df.columns)
+        for j, h in enumerate(headers, start=1):
+            c = ws2.cell(row=2, column=j, value=h)
+            c.font = Font(bold=True, color="FFFFFFFF"); c.fill = PatternFill("solid", fgColor=HEAD)
+            c.alignment = CENTER; c.border = BORDER
+        for i, (_, r) in enumerate(mdr_df.iterrows(), start=3):
+            for j, h in enumerate(headers, start=1):
+                cell = ws2.cell(row=i, column=j, value=r[h])
+                cell.border = BORDER
+                if j > 1:
+                    cell.alignment = CENTER
+        ws2.column_dimensions["A"].width = 28
 
     buffer = io.BytesIO()
     wb.save(buffer)

@@ -62,7 +62,8 @@ def main():
         res = pipeline.run(micro, profile["col_map"], profile["ab_cols"], conditions,
                            his_df=his, origins=origins, **his_kw)
         data = export.to_publish_excel(res.long_form, res.drug_name, res.totals,
-                                       scope=f"All specimen & ward - {label}")
+                                       scope=f"All specimen & ward - {label}",
+                                       date_range=res.date_range, mdr_df=res.mdr)
         fp = out_dir / f"antibiogram_{label}.xlsx"
         fp.write_bytes(data)
         reported = sum(1 for n in res.totals.values() if n >= 30)

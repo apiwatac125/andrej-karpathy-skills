@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from . import (antibiogram, classify, clean, dedup, dictionary, grouping,
-               his_join, intrinsic, loader, mapping, rollup)
+               his_join, intrinsic, loader, mapping, mdr, rollup)
 
 
 @dataclass
@@ -21,6 +21,19 @@ class Result:
     totals: dict
     drug_name: dict
     steps: dict = field(default_factory=dict)  # log จำนวนแถวแต่ละขั้น
+    mdr: pd.DataFrame | None = None            # สรุป MDR type ต่อเชื้อ
+    date_range: str = ""                       # ช่วงวันที่จริงของข้อมูลที่ใช้
+
+
+def date_range_str(df: pd.DataFrame, col: str = "collect_datetime") -> str:
+    """คืนช่วงวันที่จริงจากข้อมูล เช่น '1 January 2026 – 30 June 2026'."""
+    if col not in df.columns:
+        return ""
+    s = pd.to_datetime(df[col], errors="coerce").dropna()
+    if s.empty:
+        return ""
+    lo, hi = s.min(), s.max()
+    return f"{lo.day} {lo:%B %Y} – {hi.day} {hi:%B %Y}"
 
 
 def prepare(
@@ -117,7 +130,13 @@ def finalize(
     )
     matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
     totals = work["report_organism"].value_counts().to_dict()
-    return Result(long_form, matrix, totals, drug_name, steps)
+
+    # จำแนก MDR type ต่อ isolate แล้วสรุปต่อเชื้อ
+    work_mdr = mdr.classify_mdr(work, drug_name, conditions, organism_field="organism")
+    mdr_df = mdr.mdr_summary(work_mdr, report_field="report_organism")
+
+    return Result(long_form, matrix, totals, drug_name, steps, mdr=mdr_df,
+                  date_range=date_range_str(work))
 
 
 def run(micro_df, col_map, ab_cols, conditions, his_df=None, his_hn_col=None,

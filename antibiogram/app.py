@@ -151,6 +151,13 @@ st.caption(f"หลังกรอง/ตัดซ้ำ เหลือ {res.st
 # แปลงเป็น string ก่อนแสดง (ตารางมีทั้งตัวเลขและ "R" ปนกัน -> Arrow ต้องการชนิดเดียว)
 st.dataframe(matrix.fillna("").astype(str), use_container_width=True)
 
+# --- สรุป MDR type (เทียบกับ MLAB) ---
+if res.mdr is not None and not res.mdr.empty:
+    st.subheader("จำนวน isolate ตาม MDR type")
+    st.caption("CRE / CRPA / CRAB / MRSA / MRCoNS / VRE / CoRO — isolate หนึ่งอาจนับได้หลาย type")
+    st.dataframe(res.mdr, use_container_width=True, hide_index=True)
+
+date_range = res.date_range
 scope_txt = ("Specimen: " + ", ".join(sel_spec[:3]) + (" ..." if len(sel_spec) > 3 else "")
              + " | Ward: " + ("ทุก ward" if len(sel_ward) == len(wards) else ", ".join(sel_ward[:3]))
              + " | " + ", ".join(sel_origin))
@@ -162,7 +169,8 @@ with c_dl1:
         data=export.to_publish_excel(
             long_form, drug_name, organism_totals,
             scope=scope_txt,
-            date_range=f"1 January – 31 December ({', '.join(sel_origin)})",
+            date_range=date_range,
+            mdr_df=res.mdr,
         ),
         file_name="antibiogram_publish.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
