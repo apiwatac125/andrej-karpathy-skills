@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# เงื่อนไขการวิเคราะห์ Antibiogram (อ้างอิง CLSI M39)
+# ค่าทั้งหมดนี้เป็นค่าเริ่มต้น (default) และปรับได้จากหน้าจอโปรแกรม
+# ---------------------------------------------------------------------------
+
+cleaning:
+  # ตัดแถวที่ไม่ใช่เชื้อเพาะ (Gram stain/smear) ดูจากโค้ดเชื้อ
+  drop_if_organism_contains: [".", " "]
+  drop_if_organism_blank: true
+
+classification:
+  # นับเป็น "วัน" (วันปฏิทิน) ไม่คิดชั่วโมง
+  # ส่วนต่าง (วันส่งตรวจ - วัน admit) >= กี่วัน จึงถือเป็น HAI (น้อยกว่านี้ = CAI)
+  hai_threshold_days: 2
+  # ถ้าไม่มีวันที่ admit (เช่น ผู้ป่วย OPD) ให้จัดเป็นอะไร: CAI / HAI / UNKNOWN
+  missing_admit_as: CAI
+
+deduplication:
+  # CLSI M39: นับเฉพาะเชื้อตัวแรกของผู้ป่วยแต่ละคนต่อสายพันธุ์
+  enabled: true
+  # คีย์ที่ใช้นิยาม "ผู้ป่วยคนเดิม + เชื้อชนิดเดิม"
+  scope: [hn, organism]
+
+reporting:
+  # จำนวน isolate ขั้นต่ำต่อคู่ (เชื้อ x ยา) ที่จะรายงาน %S
+  min_isolates: 30
+
+susceptibility:
+  # การแปลงค่าผลดิบให้เป็น S / I / R (จับคู่แบบไม่สนตัวพิมพ์เล็ก-ใหญ่)
+  susceptible_values: [S, SUSCEPTIBLE, SENSITIVE]
+  intermediate_values: [I, INTERMEDIATE, SDD, "S-DD"]
+  resistant_values: [R, RESISTANT]
+  # CLSI M39 รายงาน %S เท่านั้น -> ปกติไม่นับ I เป็น susceptible
+  count_intermediate_as_susceptible: false
+  # ยกเว้นยาเหล่านี้ให้คิด %I เป็น susceptible (เช่น Colistin ที่ CLSI เหลือแต่ I/R)
+  intermediate_as_susceptible_drugs: [Colistin]
+  # ค่าที่ถือว่า "ไม่ได้ทดสอบ" (ไม่นับเป็นตัวหาร) เช่น ช่องว่าง หรือ NA
+  not_tested_values: ["", "NT", "NA", "N/A", "-"]
