@@ -21,12 +21,18 @@ HERE = Path(__file__).resolve().parent
 
 
 def _read_table(path: str, encoding: str | None = None) -> pd.DataFrame:
+    from ab import loader
     p = str(path).lower()
     if p.endswith(".dbf"):
-        from ab import loader
         return loader.read_dbf(path, encoding=encoding or "cp874")
     if p.endswith(".csv"):
-        return pd.read_csv(path, dtype=str, encoding=encoding)
+        # ลองตาม encoding ที่ระบุก่อน แล้วค่อย fallback เดา encoding อัตโนมัติ
+        if encoding:
+            try:
+                return pd.read_csv(path, dtype=str, encoding=encoding)
+            except (UnicodeDecodeError, LookupError):
+                pass
+        return loader.read_table(path)
     return pd.read_excel(path, sheet_name=0, dtype=object)
 
 
