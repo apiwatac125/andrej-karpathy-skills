@@ -1,0 +1,183 @@
+raw_name,standard_name
+*G+BUN,Unidentified Gram Positive Bacilli
+*G+CUN,Unidentified Gram Positive Cocci
+ACGSPP,Actinotignum species
+ACNB1N,Acinetobacter baumannii
+ACNBMC,Acinetobacter baumannii
+ACNBMN,Acinetobacter baumannii
+ACNBRZ,Acinetobacter bereziniae
+ACNJHN,Acinetobacter johnsonii
+ACNJNI,Acinetobacter junii
+ACNLTC,Acinetobacter lactucae
+ACNNSC,Acinetobacter nosocomialis
+ACNPTT,Acinetobacter pittii
+ACNSLI,Acinetobacter soli
+ACNSPP,Acinetobacter species
+ACNVRB,Acinetobacter variabilis
+ACRINS,Achromobacter insolitus
+ACRXDN,Achromobacter denitrificans
+ACRXLS,Achromobacter xylosoxidans
+ARMCVC,Aeromonas caviae complex
+ARMCVE,Aeromonas caviae
+ARMENT,Aeromonas enteropelogenes(Aeromonas trota)
+ARMHDC,Aeromonas hydrophila complex
+ARMHDR,Aeromonas hydrophila
+ARMHHD,Aeromonas hydrophila ssp hydrophila
+ARMJND,Aeromonas jandaei
+ARMVRI,Aeromonas veronii
+ARMVRN,Aeromonas veronii bv veronii
+ASPFMG,Aspergillus fumigatus
+BCLCRS,Bacillus cereus
+BCLCTM,Bacillus cereus/thuringiensis/mycoides
+BCLSPP,Bacillus species
+BDDYST,Budding Yeast
+BRBCSE,Brevibacterium casei
+BRNCTR,Moraxella (Branhamella) catarrhalis
+CHSGLM,Chryseobacterium gleum
+CHSIND,Chryseobacterium indologenes
+CMPFFT,Campylobacter fetus
+CNDALB,Candida albicans
+CNDDBL,Candida dubliniensis
+CNDGLL,Candida guilliermondii(Pichia guilliermondii)
+CNDKRS,Pichia kudriavzevii(Candida krusei)(Issatchenkia orientalis)
+CNDORT,Candida orthopsilosis
+CNDPRP,Candida parapsilosis
+CNDRGS,Candida rugosa
+CNDTRP,Candida tropicalis
+CRNAFT,Corynebacterium afermentans
+CRNAMC,Corynebacterium amycolatum
+CRNARM,Corynebacterium aurimucosum
+CRNCYL,Corynebacterium coyleae
+CRNGCR,Corynebacterium glucuronolyticum
+CRNPRP,Corynebacterium propinquum
+CRNPSD,Corynebacterium pseudodiphtheriticum
+CRNSML,Corynebacterium simulans
+CRNSPP,Corynebacterium species
+CRNSTG,Corynebacterium striatum
+CRNSTR,Corynebacterium striatum
+CRPNFR,Cryptococcus neoformans
+CTRDVR,Citrobacter koseri
+CTRFRN,Citrobacter freundii
+DLFLCS,Delftia lacustris
+DRBHMN,Dermabacter hominis
+ELZANP,Elizabethkingia anophelis
+ENCAVM,Enterococcus avium
+ENCCSS,Enterococcus casseliflavus
+ENCF2M,Enterococcus faecium
+ENCFCL,Enterococcus faecalis
+ENCFCM,Enterococcus faecium
+ENCHRA,Enterococcus hirae
+ENTARG,Klebsiella(Enterobacter) aerogenes
+ENTBGN,Enterobacter bugandensis
+ENTCLC,Enterobacter cloacae
+ENTCLX,Enterobacter cloacae
+ENTHRM,Enterobacter hormaechei
+ENTSPP,Enterobacter species
+ESCCLI,Escherichia coli
+FUNGUS,FUNGUS
+HMPINF,Haemophilus influenzae
+HMPPRN,Haemophilus parainfluenzae
+KCRRHZ,Kocuria rhizophila
+KLBOXT,Klebsiella oxytoca
+KLBP1M,Klebsiella pneumoniae
+KLBPNM,Klebsiella pneumoniae
+KLBPNP,Klebsiella pneumoniae
+KLBVRC,Klebsiella variicola
+LCTCNF,Weissella confusa
+LCTCRS,Lactobacillus crispatus
+LCTSPP,Lactobacillus species
+LSTMNC,Listeria monocytogenes
+MCRLTS,Micrococcus luteus
+MRGMRG,Morganella morganii
+MRXOSL,Moraxella osloensis
+NCPRSR,Necropsobacter rosorum
+NSMMSS,Nosocomiicoccus massiliensis
+PDTSPP,Pseudarthrobacter species
+PNTDSP,Pantoea dispersa
+PRNACN,Cutibacterium(Propionibacterium) acnes
+PRTHSR,Proteus hauseri
+PRTMRB,Proteus mirabilis
+PRTVLG,Proteus vulgaris
+PRVRTT,Providencia rettgeri
+PRVSTR,Providencia stuartii
+PSDA1G,Pseudomonas aeruginosa
+PSDACV,Delftia acidovorans
+PSDALG,Shewanella algae
+PSDARG,Pseudomonas aeruginosa
+PSDCP0,Burkholderia cepacia complex
+PSDCPC,Burkholderia cepacia
+PSDMLT,Stenotrophomonas maltophilia
+PSDMNT,Pseudomonas monteilii
+PSDMSS,Pseudomonas mosselii
+PSDPTD,Pseudomonas putida
+PSDPTG,Pseudomonas putida group
+PSDSMN,Burkholderia seminalis
+PSDSPP,Pseudomonas species
+PSTMLT,Pasteurella multocida
+SHWSPP,Shewanella species
+SRRMRC,Serratia marcescens
+SRRNMT,Serratia nematodiphila
+SRRSPP,Serratia species
+STMMCL,Rothia mucilaginosa
+STPA+S,Staphylococcus aureus
+STPA-A,Staphylococcus aureus
+STPA-X,Staphylococcus aureus
+STPACA,Staphylococcus aureus
+STPARS,Staphylococcus aureus
+STPART,Staphylococcus argenteus
+STPARX,Staphylococcus aureus
+STPCHN,Staphylococcus cohnii
+STPCNG,Coagulase Negative Staphylococci
+STPCPI,Staphylococcus capitis
+STPCPR,Staphylococcus caprae
+STPCPT,Staphylococcus capitis ssp capitis
+STPEPD,Staphylococcus epidermidis
+STPHMH,Staphylococcus hominis ssp hominis
+STPHML,Staphylococcus haemolyticus
+STPHMN,Staphylococcus hominis
+STPINT,Staphylococcus intermedius
+STPLGD,Staphylococcus lugdunensis
+STPPST,Staphylococcus pasteuri
+STPPTK,Staphylococcus pettenkoferi
+STPSPR,Staphylococcus saprophyticus
+STPURL,Staphylococcus ureilyticus
+STPWRN,Staphylococcus warneri
+STTA-L,Streptococcus agalactiae (Strep. Group B)
+STTAGL,Streptococcus agalactiae (Strep. Group B)
+STTANG,Streptococcus anginosus
+STTBVL,Streptococcus gallolyticus
+STTCNS,Streptococcus constellatus
+STTDSG,Streptococcus dysgalactiae
+STTEQN,Streptococcus equinus
+STTIFR,Streptococcus infantarius
+STTMT0,Streptococcus mitis group
+STTMTO,Streptococcus mitis/oralis
+STTMTS,Streptococcus mitis
+STTP-N,Streptococcus pyogenes (Strep. group A)
+STTPGN,Streptococcus pyogenes (Strep. group A)
+STTPNM,Streptococcus pneumoniae
+STTPSG,Streptococcus parasanguinis
+STTSLV,Streptococcus salivarius
+STTVRD,viridans group Streptococci
+STTVST,Streptococcus vestibularis
+TRLGLC,Candida glabrata complex
+TRSASH,Trichosporon asahii
+YEAST,Yeast
+Z0C00C,Salmonella serogroup C
+Z0D00D,Salmonella serogroup D
+Z0E00E,Salmonella serogroup E
+Acinetobacter baumannii 1,Acinetobacter baumannii
+Acinetobacter baumannii complex,Acinetobacter baumannii
+Corynebacterium striatum group,Corynebacterium striatum
+Enterococcus faecium 2,Enterococcus faecium
+Enterobacter cloacae complex,Enterobacter cloacae
+Klebsiella pneumoniae 1,Klebsiella pneumoniae
+Klebsiella pneumoniae ssp pneumoniae,Klebsiella pneumoniae
+Pseudomonas aeruginosa 1,Pseudomonas aeruginosa
+Staphylococcus aureus (iMLSB resistant strain),Staphylococcus aureus
+Stap. aureus complex (S.argenteus)_,Staphylococcus aureus
+Staphylococcus aureus complex_,Staphylococcus aureus
+Staphylococcus aureus complex (S.argenteus),Staphylococcus aureus
+Staphylococcus aureus complex,Staphylococcus aureus
+Streptococcus agalactiae_,Streptococcus agalactiae (Strep. Group B)
+Streptococcus pyogenes_,Streptococcus pyogenes (Strep. group A)

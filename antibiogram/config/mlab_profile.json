@@ -1,0 +1,15 @@
+{
+  "name": "MLAB (Lerdsin)",
+  "col_map": {
+    "hn": "HN",
+    "organism": "ORGANISM",
+    "specimen": "CSOURCE",
+    "ward": "CWARD",
+    "collect_datetime": "SPCDATE"
+  },
+  "ab_cols": ["AP", "OX", "CAZ", "CRO", "CTX", "FEP", "FOX", "AUG", "SAM", "TZP",
+              "SCFP", "CAZA", "ETP", "MEM", "IPM", "DOR", "GM", "AK", "T", "TGC",
+              "CP", "LVX", "C", "E", "DA", "SXT", "CL", "VA"],
+  "his": {"hn_col": "HN", "admit_col": "วันที่ลงทะเบียน", "an_col": "AN"},
+  "his_encoding": "cp874"
+}
