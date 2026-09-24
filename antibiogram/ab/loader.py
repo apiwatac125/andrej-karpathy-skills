@@ -14,12 +14,37 @@ def read_excel(file, sheet_name: int | str = 0) -> pd.DataFrame:
     return pd.read_excel(file, sheet_name=sheet_name, dtype=object)
 
 
+def read_dbf(file, encoding: str = "cp874") -> pd.DataFrame:
+    """อ่านไฟล์ .DBF (ฐานข้อมูล dBASE ที่ MLAB export) เป็น dataframe.
+
+    ต้องการแพ็กเกจ dbfread; ถ้าไม่มีจะแจ้งวิธีติดตั้ง.
+    """
+    try:
+        from dbfread import DBF
+    except ImportError as e:  # pragma: no cover
+        raise ImportError("ต้องติดตั้งแพ็กเกจ dbfread ก่อน (pip install dbfread)") from e
+
+    # DBF ต้องการ path จริง — ถ้าเป็น uploaded object ให้เขียนลงไฟล์ชั่วคราว
+    path = getattr(file, "name", file)
+    if hasattr(file, "read"):
+        import tempfile
+        if hasattr(file, "seek"):
+            file.seek(0)
+        tmp = tempfile.NamedTemporaryFile(suffix=".dbf", delete=False)
+        tmp.write(file.read()); tmp.close()
+        path = tmp.name
+    table = DBF(path, encoding=encoding, char_decode_errors="ignore")
+    return pd.DataFrame(iter(table))
+
+
 def read_table(file, sheet_name: int | str = 0) -> pd.DataFrame:
-    """อ่านไฟล์ตาราง รองรับทั้ง .xlsx/.xls และ .csv (เดา encoding ไทยให้).
+    """อ่านไฟล์ตาราง รองรับ .xlsx/.xls, .csv และ .dbf (เดา encoding ไทยให้).
 
     file = path หรือ uploaded file object (มี .name).
     """
     name = str(getattr(file, "name", file)).lower()
+    if name.endswith(".dbf"):
+        return read_dbf(file)
     if name.endswith(".csv"):
         for enc in ("utf-8-sig", "utf-8", "cp874", "tis-620", "latin-1"):
             try:

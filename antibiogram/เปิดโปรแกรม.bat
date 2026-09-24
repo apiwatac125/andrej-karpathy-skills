@@ -19,7 +19,7 @@ if errorlevel 1 (
 )
 
 REM --- ตรวจ/ติดตั้งไลบรารีให้ครบทุกครั้ง (ครั้งแรกช้าหน่อย ครั้งต่อไปเร็ว) ---
-python -c "import streamlit, pandas, openpyxl, yaml" >nul 2>&1
+python -c "import streamlit, pandas, openpyxl, yaml, dbfread" >nul 2>&1
 if errorlevel 1 (
     echo [*] กำลังติดตั้ง/อัปเดตไลบรารี... รอสักครู่
     python -m pip install -r requirements.txt

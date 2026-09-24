@@ -53,11 +53,17 @@ def attach_admit(
     left["hn_norm"] = left[lab_hn_col].map(norm_hn).astype(object)
     left["_row"] = range(len(left))
 
-    # merge_asof ต้องเรียงตามคีย์เวลา
-    left_sorted = left.sort_values(collect_col)
-    right_sorted = admit_lookup.sort_values("admit_datetime")
+    # ปรับ resolution ของคีย์เวลาให้ตรงกัน (DBF ให้ [s], HIS อาจเป็น [us]/[ns])
+    left[collect_col] = pd.to_datetime(left[collect_col], errors="coerce").astype("datetime64[ns]")
+    right = admit_lookup.copy()
+    right["admit_datetime"] = pd.to_datetime(right["admit_datetime"], errors="coerce").astype("datetime64[ns]")
 
-    merged = pd.merge_asof(
+    # merge_asof ต้องเรียงตามคีย์เวลาและห้ามมี NaT ในคีย์ -> จับคู่เฉพาะแถวที่มีวันส่งตรวจ
+    have_dt = left[collect_col].notna()
+    left_sorted = left[have_dt].sort_values(collect_col)
+    right_sorted = right.sort_values("admit_datetime")
+
+    matched = pd.merge_asof(
         left_sorted,
         right_sorted,
         left_on=collect_col,
@@ -65,6 +71,8 @@ def attach_admit(
         by="hn_norm",
         direction="backward",
     )
-    # คืนลำดับเดิม + ตัดคอลัมน์ช่วยงาน
-    merged = merged.sort_values("_row").drop(columns=["_row"]).reset_index(drop=True)
-    return merged
+    # นำ admit_datetime ที่จับคู่ได้ กลับไปเติมทุกแถว (รวมแถวที่ไม่มีวันส่งตรวจ) ตามลำดับเดิม
+    admit_by_row = matched.set_index("_row")["admit_datetime"]
+    out = left.drop(columns=["hn_norm"])
+    out["admit_datetime"] = out["_row"].map(admit_by_row)
+    return out.drop(columns=["_row"]).reset_index(drop=True)

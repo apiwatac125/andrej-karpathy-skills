@@ -27,7 +27,7 @@ def _load_conditions() -> dict:
 
 # --- 1. อัปโหลดไฟล์ -------------------------------------------------------
 st.header("1) อัปโหลดไฟล์ข้อมูล (Excel)")
-uploaded = st.file_uploader("เลือกไฟล์ข้อมูลแลป (.xlsx / .xls / .csv)", type=["xlsx", "xls", "csv"])
+uploaded = st.file_uploader("เลือกไฟล์ข้อมูลแลป (.xlsx / .xls / .csv / .dbf)", type=["xlsx", "xls", "csv", "dbf"])
 
 if uploaded is None:
     st.info("อัปโหลดไฟล์เพื่อเริ่มต้น")
