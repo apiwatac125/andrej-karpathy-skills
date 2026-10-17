@@ -146,8 +146,11 @@ svg{display:block;width:100%;height:auto}
 .tchip.on{color:#fff;border-color:transparent;background:var(--c,var(--brand));box-shadow:0 1px 5px rgba(12,102,151,.25)}
 .tchip b{font-weight:700;opacity:.8}
 .tchip.on b{opacity:.95}
+.tchip.ctrl{color:var(--fg);background:var(--surface2);border-color:var(--line);font-weight:600}
+.tchip.ctrl:hover{border-color:var(--brand);color:var(--brand)}
 .tchip.reset{color:var(--brand);background:transparent;border-style:dashed}
 .tchip.reset:hover{background:var(--surface2)}
+.tctl-sep{flex-basis:100%;height:0}
 footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;border-top:1px solid var(--line);
   text-align:center;line-height:1.7}
 </style>
@@ -242,7 +245,7 @@ const years = DATA.meta.years.map(String);
 const ORIGIN_LABEL = {"ALL":"ทั้งหมด","CAI":"ชุมชน (CAI)","HAI":"โรงพยาบาล (HAI)"};
 const WARD_LABEL = {}; DATA.meta.wards.forEach(w=>WARD_LABEL[w.key]=w.label);
 let curOrg=null, curYear=years[years.length-1], curOrigin="ALL", curSpec="ALL", curWard="ALL", showAll=false;
-let trendSel=null, trendCtx="", trendActive=[];  /* trendSel: null=auto-pick, else Set of chosen drug names */
+let trendSel=null, trendActive=[];  /* trendSel: null=auto-pick, else Set of chosen drug names (persists across organisms) */
 
 const orgSel=document.getElementById('org');
 const stratKey=()=>`${curOrigin}|${curSpec}|${curWard}`;
@@ -344,8 +347,6 @@ function render(){
 function renderTrend(key){
   const y0=years[0], y1=years[years.length-1];
   const d=DATA.organisms[curOrg].strata[key].drugs;
-  const ctx=curOrg+'|'+key;
-  if(ctx!==trendCtx){ trendSel=null; trendCtx=ctx; }   /* reset to auto when org/stratum changes */
   const plottable=Object.keys(d).filter(n=>years.some(y=>d[n][y]));
   /* auto-pick: ยาที่ %S ลดลงมากสุด (y0->y1) มิฉะนั้นเอา %S สูงสุดของปีที่เลือก */
   const cand=drugsFor(curOrg,key,curYear).map(x=>{const a=d[x.name][y0],b=d[x.name][y1];return {name:x.name,s:x.s,drop:(a&&b)?a.S-b.S:-999};});
@@ -364,10 +365,14 @@ function renderTrend(key){
   const esc=s=>s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const chipDrugs=plottable.slice().sort((a,b)=>((typeof ORD!=='undefined'?ORD[a]:0)??99)-((typeof ORD!=='undefined'?ORD[b]:0)??99)||a.localeCompare(b));
   const activeSet=new Set(active);
+  const ctrls=`<span class="tctl-sep"></span>`
+    + `<button type="button" class="tchip ctrl" onclick="trendSelectAll()">เลือกทั้งหมด</button>`
+    + `<button type="button" class="tchip ctrl" onclick="trendClear()">ล้าง</button>`
+    + (trendSel?`<button type="button" class="tchip reset" onclick="trendSel=null;renderTrend(stratKey());">↺ ค่าเริ่มต้น</button>`:'');
   document.getElementById('trendPicker').innerHTML =
     chipDrugs.map(n=>{const on=activeSet.has(n); const sv=d[n][curYear]?d[n][curYear].S:null;
       return `<button type="button" class="tchip${on?' on':''}"${on?` style="--c:${colorOf[n]}"`:''} onclick="toggleTrendDrug('${esc(n)}')">${n}${sv!=null?` <b>${sv}%</b>`:''}</button>`;}).join('')
-    + (trendSel?`<button type="button" class="tchip reset" onclick="trendSel=null;renderTrend(stratKey());">↺ ค่าเริ่มต้น</button>`:'');
+    + ctrls;
 
   const W=640,H=300,ml=42,mr=34,mt=14,mb=34,pw=W-ml-mr,ph=H-mt-mb;
   const xs=years.map((y,i)=>years.length>1?ml+pw*i/(years.length-1):ml+pw/2);
@@ -394,7 +399,10 @@ function renderTrend(key){
     leg.push(`<span><i style="background:${col}"></i>${name}</span>`);
   });
   if(!active.length){
-    document.getElementById('chart').innerHTML=`<div class="empty" style="padding:34px 8px">เลือกยาที่ต้องการดูจากปุ่มด้านบน</div>`;
+    const hint=(trendSel&&trendSel.size)
+      ? `ยาที่เลือกไว้ไม่มีผลทดสอบในเชื้อนี้ · กดเลือกยาใหม่ หรือ ↺ ค่าเริ่มต้น`
+      : `เลือกยาที่ต้องการดูจากปุ่มด้านบน`;
+    document.getElementById('chart').innerHTML=`<div class="empty" style="padding:34px 8px">${hint}</div>`;
     document.getElementById('legend').innerHTML=''; return;
   }
   document.getElementById('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="แนวโน้ม %S ข้ามปี" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
@@ -405,6 +413,12 @@ function toggleTrendDrug(name){
   if(trendSel.has(name)) trendSel.delete(name); else trendSel.add(name);
   renderTrend(stratKey());
 }
+function trendSelectAll(){
+  const key=stratKey(), d=DATA.organisms[curOrg].strata[key].drugs;
+  trendSel=new Set(Object.keys(d).filter(n=>years.some(y=>d[n][y])));
+  renderTrend(key);
+}
+function trendClear(){ trendSel=new Set(); renderTrend(stratKey()); }
 
 orgSel.onchange=()=>{curOrg=orgSel.value;showAll=false;render();};
 document.getElementById('moreBtn').onclick=()=>{showAll=!showAll;render();};
