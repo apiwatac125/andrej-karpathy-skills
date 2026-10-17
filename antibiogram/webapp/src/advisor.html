@@ -79,9 +79,21 @@ h1{font-family:var(--font-display);font-size:1.62rem;font-weight:700;margin:0;le
 .field{display:flex;flex-direction:column;gap:7px;min-width:0}
 .field.grow{width:100%}
 .field label{font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
-select{font:inherit;font-size:1rem;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--line-strong);
-  background:var(--surface2);color:var(--fg);width:100%;cursor:pointer}
-select:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+select,input#org{font:inherit;font-size:1rem;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--line-strong);
+  background:var(--surface2);color:var(--fg);width:100%;cursor:pointer;box-sizing:border-box}
+input#org{cursor:text}
+select:focus-visible,input#org:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.synorgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.synorgs:empty{display:none}
+.synorgs .ochip{font:inherit;font-size:.82rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--fg);cursor:pointer;transition:.15s}
+.synorgs .ochip:hover{border-color:var(--brand);color:var(--brand)}
+.synorgs .ochip.on{background:var(--brand);color:#fff;border-color:transparent}
+.intrinsic{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:.82rem;color:var(--muted)}
+.intrinsic:empty{display:none}
+.intrinsic b{color:var(--fg);font-weight:700}
+.intrinsic .ir{display:inline-block;margin:3px 5px 0 0;padding:3px 9px;border-radius:999px;background:var(--surface2);
+  border:1px solid var(--line);color:var(--muted);text-decoration:line-through;text-decoration-color:var(--sus-low)}
 .pillrow{display:flex;gap:7px;flex-wrap:wrap}
 .pill{font:inherit;font-size:.85rem;padding:8px 14px;border-radius:8px;border:1px solid var(--line-strong);
   background:var(--surface2);color:var(--muted);cursor:pointer;white-space:nowrap}
@@ -181,8 +193,14 @@ footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;bord
 
   <div class="controls">
     <div class="field grow">
-      <label for="org">เชื้อก่อโรค (Organism)</label>
-      <select id="org"></select>
+      <label>เลือกตามกลุ่มอาการ (ตั้งค่าสิ่งส่งตรวจ + เชื้อที่พบบ่อยให้)</label>
+      <div class="pillrow" id="synPills"></div>
+    </div>
+    <div class="field grow">
+      <label for="org">เชื้อก่อโรค (Organism) — พิมพ์ค้นหาได้</label>
+      <input id="org" list="orgList" autocomplete="off" spellcheck="false" placeholder="พิมพ์หรือเลือกชื่อเชื้อ เช่น Escherichia coli…">
+      <datalist id="orgList"></datalist>
+      <div class="synorgs" id="synOrgs"></div>
     </div>
     <div class="filterrow">
       <div class="field"><label>แหล่งติดเชื้อ (Specimen)</label><div class="pillrow" id="specPills"></div></div>
@@ -200,6 +218,7 @@ footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;bord
         <p class="note" id="rankNote"></p>
         <div class="rank" id="rankList"></div>
         <button class="morebtn" id="moreBtn" type="button" hidden>ดูยาทั้งหมด ▾</button>
+        <div class="intrinsic" id="intrinsic"></div>
       </div>
       <div class="card">
         <h2>คำแนะนำ empiric</h2>
@@ -248,6 +267,8 @@ let curOrg=null, curYear=years[years.length-1], curOrigin="ALL", curSpec="ALL", 
 let trendSel=null, trendActive=[];  /* trendSel: null=auto-pick, else Set of chosen drug names (persists across organisms) */
 
 const orgSel=document.getElementById('org');
+const orgList=document.getElementById('orgList');
+let curSyn=null;
 const stratKey=()=>`${curOrigin}|${curSpec}|${curWard}`;
 const orgsFor=key=>Object.keys(DATA.organisms).filter(o=>DATA.organisms[o].strata[key]);
 const yearsForKey=key=>years.filter(y=>Object.keys(DATA.organisms).some(o=>{const s=DATA.organisms[o].strata[key];return s&&s.N[y]!=null;}));
@@ -262,7 +283,7 @@ function buildPills(elId, items, getCur, setCur){
     el.appendChild(b);
   });
 }
-buildPills('specPills', DATA.meta.specimens.map(s=>({val:s.key,label:s.label})), ()=>curSpec, v=>{curSpec=v;showAll=false;});
+buildPills('specPills', DATA.meta.specimens.map(s=>({val:s.key,label:s.label})), ()=>curSpec, v=>{curSpec=v;showAll=false;curSyn=null;});
 buildPills('originPills', DATA.meta.origins.map(o=>({val:o,label:ORIGIN_LABEL[o]})), ()=>curOrigin, v=>{curOrigin=v;showAll=false;});
 buildPills('wardPills', DATA.meta.wards.map(w=>({val:w.key,label:w.label})), ()=>curWard, v=>{curWard=v;showAll=false;});
 buildPills('yearPills', years.map(y=>({val:y,label:y})), ()=>curYear, v=>{curYear=v;});
@@ -280,11 +301,65 @@ function updatePillAvailability(){
 
 function rebuildOrgOptions(){
   const avail=orgsFor(stratKey());
-  orgSel.innerHTML='';
-  avail.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; orgSel.appendChild(op); });
+  orgList.innerHTML='';
+  avail.forEach(o=>{ const op=document.createElement('option'); op.value=o; orgList.appendChild(op); });
   if(!avail.includes(curOrg)) curOrg=avail[0]||null;
-  if(curOrg) orgSel.value=curOrg;
+  orgSel.value=curOrg||'';
   return avail;
+}
+
+/* ---- เลือกตามกลุ่มอาการ (syndrome) ---- */
+const SYNDROMES=[
+  {key:'uti', label:'ทางเดินปัสสาวะ (UTI)', spec:'Urine', orgs:['Escherichia coli','Klebsiella pneumoniae','Proteus mirabilis','Enterococcus faecalis','Pseudomonas aeruginosa']},
+  {key:'pneu',label:'ปอดอักเสบ/ทางเดินหายใจ', spec:'Sputum', orgs:['Klebsiella pneumoniae','Pseudomonas aeruginosa','Acinetobacter baumannii','Staphylococcus aureus','Streptococcus pneumoniae','Escherichia coli']},
+  {key:'bsi', label:'ติดเชื้อในกระแสเลือด (Sepsis)', spec:'Blood', orgs:['Escherichia coli','Klebsiella pneumoniae','Staphylococcus aureus','Pseudomonas aeruginosa','Acinetobacter baumannii','Enterococcus faecium']},
+  {key:'ssti',label:'ผิวหนัง/เนื้อเยื่ออ่อน', spec:'ALL', orgs:['Staphylococcus aureus','Beta-hemolytic Streptococci','Escherichia coli','Pseudomonas aeruginosa']},
+  {key:'iai', label:'ในช่องท้อง (IAI)', spec:'ALL', orgs:['Escherichia coli','Klebsiella pneumoniae','Enterococcus faecalis','Pseudomonas aeruginosa']},
+];
+function buildSynPills(){
+  const el=document.getElementById('synPills'); el.innerHTML='';
+  SYNDROMES.forEach(sy=>{ const b=document.createElement('button'); b.className='pill'; b.type='button';
+    b.textContent=sy.label; b.dataset.key=sy.key; b.onclick=()=>applySyndrome(sy); el.appendChild(b); });
+}
+buildSynPills();
+function applySyndrome(sy){
+  curSyn=(curSyn&&curSyn.key===sy.key)?null:sy;   /* กดซ้ำ = ปิด */
+  if(curSyn){
+    if(sy.spec==='ALL'||orgsFor(`${curOrigin}|${sy.spec}|${curWard}`).length) curSpec=sy.spec;
+    const avail=orgsFor(stratKey()); const first=sy.orgs.find(o=>avail.includes(o));
+    if(first) curOrg=first;
+  }
+  showAll=false; refresh();
+}
+function renderSynOrgs(){
+  const el=document.getElementById('synOrgs');
+  if(!curSyn){ el.innerHTML=''; return; }
+  const avail=orgsFor(stratKey());
+  const list=curSyn.orgs.filter(o=>avail.includes(o));
+  el.innerHTML = (list.length?`<span style="font-size:.78rem;color:var(--muted);align-self:center;margin-right:2px">เชื้อที่พบบ่อย:</span>`:'')
+    + list.map(o=>`<button type="button" class="ochip${o===curOrg?' on':''}" onclick="pickOrg('${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
+}
+function pickOrg(o){ curOrg=o; orgSel.value=o; showAll=false; render(); }
+
+/* ---- จดจำสถานะผ่าน URL (บุ๊กมาร์ก/แชร์มุมมองได้) ---- */
+function writeHash(){
+  const p=new URLSearchParams();
+  if(curOrg) p.set('org',curOrg);
+  if(curOrigin!=='ALL') p.set('o',curOrigin);
+  if(curSpec!=='ALL') p.set('s',curSpec);
+  if(curWard!=='ALL') p.set('w',curWard);
+  if(curYear) p.set('y',curYear);
+  try{ history.replaceState(null,'','#'+p.toString()); }catch(e){}
+}
+function readHash(){
+  const h=location.hash.replace(/^#/,''); if(!h) return;
+  const p=new URLSearchParams(h);
+  const sk=DATA.meta.specimens.map(s=>s.key), wk=DATA.meta.wards.map(w=>w.key);
+  if(DATA.meta.origins.includes(p.get('o'))) curOrigin=p.get('o');
+  if(sk.includes(p.get('s'))) curSpec=p.get('s');
+  if(wk.includes(p.get('w'))) curWard=p.get('w');
+  if(years.includes(p.get('y'))) curYear=p.get('y');
+  if(p.get('org')&&DATA.organisms[p.get('org')]) curOrg=p.get('org');
 }
 
 function drugsFor(org,key,year){
@@ -297,7 +372,9 @@ function band(s){return s>=80?'high':s>=60?'mid':'low';}
 function refresh(){
   updatePillAvailability();
   setPressed('specPills',curSpec); setPressed('originPills',curOrigin); setPressed('wardPills',curWard); setPressed('yearPills',curYear);
+  for(const b of document.getElementById('synPills').children) b.setAttribute('aria-pressed', !!(curSyn&&b.dataset.key===curSyn.key));
   const avail=rebuildOrgOptions();
+  renderSynOrgs();
   const nd=document.getElementById('nodata'), res=document.getElementById('results');
   if(!curOrg){
     res.hidden=true; nd.hidden=false;
@@ -341,7 +418,14 @@ function render(){
     bucket('alt','ทางเลือก (60–79%)',alt.slice(0,5),'—')+
     bucket('res','สงวนไว้สำหรับเชื้อดื้อ / ปรึกษา ID (แม้ %S สูง)',reserve.slice(0,6),'—');
 
+  const ir=DATA.organisms[curOrg].intrinsicR||[];
+  document.getElementById('intrinsic').innerHTML = ir.length
+    ? `<b>ดื้อตามธรรมชาติ (intrinsic R) — ไม่ควรใช้กับเชื้อนี้:</b><br>`+ir.map(x=>`<span class="ir">${x}</span>`).join('')
+    : '';
+
+  renderSynOrgs();
   renderTrend(key);
+  writeHash();
 }
 
 function renderTrend(key){
@@ -420,7 +504,14 @@ function trendSelectAll(){
 }
 function trendClear(){ trendSel=new Set(); renderTrend(stratKey()); }
 
-orgSel.onchange=()=>{curOrg=orgSel.value;showAll=false;render();};
+orgSel.onchange=()=>{
+  const avail=orgsFor(stratKey()); let v=orgSel.value.trim();
+  if(!avail.includes(v)){
+    const lv=v.toLowerCase();
+    v=avail.find(o=>o.toLowerCase()===lv)||avail.find(o=>o.toLowerCase().startsWith(lv))||avail.find(o=>o.toLowerCase().includes(lv))||curOrg;
+  }
+  curOrg=v; orgSel.value=v||''; showAll=false; render();
+};
 document.getElementById('moreBtn').onclick=()=>{showAll=!showAll;render();};
 
 const root=document.documentElement, tb=document.getElementById('themeBtn');
@@ -507,6 +598,7 @@ async function hitCounter(){
 }
 hitCounter();
 
-curOrg=orgsFor(stratKey())[0];
+readHash();
+if(!curOrg || !orgsFor(stratKey()).includes(curOrg)) curOrg=orgsFor(stratKey())[0];
 refresh();
 </script>

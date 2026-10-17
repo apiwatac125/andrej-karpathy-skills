@@ -3,8 +3,13 @@ Strata key = 'origin|specimen|ward', origin in {ALL,CAI,HAI}, specimen in {ALL,B
 Output DATA: {meta:{...}, organisms:{org:{strata:{key:{N:{yr:n}, drugs:{drug:{yr:{S,n}}}}}}}}
 """
 import openpyxl, re, json, os, glob
+from collections import defaultdict
 
 YEARS_DIR = os.path.join(os.path.dirname(__file__), "years")
+
+INTR = defaultdict(set)  # organism -> {drugs marked intrinsically resistant ("R")}
+def is_intrinsic(v):
+    return v is not None and str(v).strip().upper() == "R"
 
 def norm_org(o):
     o = re.sub(r"\s+", " ", str(o)).strip().rstrip("*").strip()
@@ -139,7 +144,9 @@ def parse_sheet(ws, base):
                 nrow=rows[i+1] if i+1<end else None
                 drugs={}
                 for c,dn in drugmap.items():
-                    s=pct(cell(r,c))
+                    raw=cell(r,c)
+                    if is_intrinsic(raw): INTR[orgn].add(dn); continue
+                    s=pct(raw)
                     if s is None: continue
                     nn=pint(cell(nrow,c)) if nrow else None
                     drugs[dn]={"S":int(s),"n":int(nn) if nn else int(num)}
@@ -180,7 +187,9 @@ def parse_old(ws, year):
                 nrow=rows[i+1] if i+1<end else None
                 drugs={}
                 for c,dn in drugmap.items():
-                    s=pct(cell(r,c))
+                    raw=cell(r,c)
+                    if is_intrinsic(raw): INTR[orgn].add(dn); continue
+                    s=pct(raw)
                     if s is None: continue
                     nn=pint(cell(nrow,c)) if nrow else None
                     drugs[dn]={"S":int(s),"n":int(nn) if nn else int(num)}
@@ -240,6 +249,11 @@ def main():
             for dn,sv in drugs.items():
                 drugset.add(dn)
                 S["drugs"].setdefault(dn,{})[y]=sv
+    # attach intrinsic-resistance list per organism (drugs that are always "R"; never shown with a %S)
+    for org,O in DATA["organisms"].items():
+        tested=set(O["strata"] and sum(([d for d in s["drugs"]] for s in O["strata"].values()),[]) or [])
+        intr=sorted(d for d in INTR.get(org,()) if d not in tested)
+        if intr: O["intrinsicR"]=intr
     SPEC_LABEL={"ALL":"ทุกสิ่งส่งตรวจ","Blood":"เลือด (Hemoculture)","Sputum":"เสมหะ (Sputum)","Urine":"ปัสสาวะ (Urine)"}
     WARD_LABEL={"ALL":"ทุก ward","MICU":"ICU อายุรกรรม (MICU)","SICU":"ICU ศัลยกรรม (SICU)"}
     DATA["meta"]={
