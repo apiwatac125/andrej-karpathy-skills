@@ -195,17 +195,16 @@ footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;bord
 
   <div class="controls">
     <div class="field grow">
-      <label>เลือกตามกลุ่มอาการ (ตั้งค่าสิ่งส่งตรวจ + เชื้อที่พบบ่อยให้)</label>
-      <div class="pillrow" id="synPills"></div>
+      <label>เลือกกลุ่มตามสิ่งส่งตรวจ (Specimen) — ตั้งตัวกรอง + แสดงเชื้อที่พบบ่อย</label>
+      <div class="pillrow" id="specGroups"></div>
     </div>
     <div class="field grow">
       <label for="org">เชื้อก่อโรค (Organism) — พิมพ์ค้นหาได้</label>
       <input id="org" list="orgList" autocomplete="off" spellcheck="false" placeholder="พิมพ์หรือเลือกชื่อเชื้อ เช่น Escherichia coli…">
       <datalist id="orgList"></datalist>
-      <div class="synorgs" id="synOrgs"></div>
+      <div class="synorgs" id="commonOrgs"></div>
     </div>
     <div class="filterrow">
-      <div class="field"><label>แหล่งติดเชื้อ (Specimen)</label><div class="pillrow" id="specPills"></div></div>
       <div class="field"><label>กลุ่มผู้ป่วย</label><div class="pillrow" id="originPills"></div></div>
       <div class="field"><label>หอผู้ป่วย (Ward)</label><div class="pillrow" id="wardPills"></div></div>
       <div class="field"><label>ปีข้อมูล</label><div class="pillrow" id="yearPills"></div></div>
@@ -270,9 +269,10 @@ let trendSel=null, trendActive=[];  /* trendSel: null=auto-pick, else Set of cho
 
 const orgSel=document.getElementById('org');
 const orgList=document.getElementById('orgList');
-let curSyn=null;
 const stratKey=()=>`${curOrigin}|${curSpec}|${curWard}`;
 const orgsFor=key=>Object.keys(DATA.organisms).filter(o=>DATA.organisms[o].strata[key]);
+const nMax=(org,key)=>{const s=DATA.organisms[org].strata[key]; return s?Math.max(0,...Object.values(s.N)):0;};
+const orgsByN=key=>orgsFor(key).slice().sort((a,b)=>nMax(b,key)-nMax(a,key));
 const yearsForKey=key=>years.filter(y=>Object.keys(DATA.organisms).some(o=>{const s=DATA.organisms[o].strata[key];return s&&s.N[y]!=null;}));
 
 /* build pill groups */
@@ -285,7 +285,6 @@ function buildPills(elId, items, getCur, setCur){
     el.appendChild(b);
   });
 }
-buildPills('specPills', DATA.meta.specimens.map(s=>({val:s.key,label:s.label})), ()=>curSpec, v=>{curSpec=v;showAll=false;curSyn=null;});
 buildPills('originPills', DATA.meta.origins.map(o=>({val:o,label:ORIGIN_LABEL[o]})), ()=>curOrigin, v=>{curOrigin=v;showAll=false;});
 buildPills('wardPills', DATA.meta.wards.map(w=>({val:w.key,label:w.label})), ()=>curWard, v=>{curWard=v;showAll=false;});
 buildPills('yearPills', years.map(y=>({val:y,label:y})), ()=>curYear, v=>{curYear=v;});
@@ -293,7 +292,7 @@ buildPills('yearPills', years.map(y=>({val:y,label:y})), ()=>curYear, v=>{curYea
 function setPressed(elId,cur){ for(const b of document.getElementById(elId).children) b.setAttribute('aria-pressed', b.dataset.val===cur); }
 /* disable combos that yield no organisms at all */
 function updatePillAvailability(){
-  for(const b of document.getElementById('specPills').children){ b.disabled = orgsFor(`${curOrigin}|${b.dataset.val}|${curWard}`).length===0; }
+  for(const b of document.getElementById('specGroups').children){ b.disabled = orgsFor(`${curOrigin}|${b.dataset.val}|${curWard}`).length===0; }
   for(const b of document.getElementById('originPills').children){ b.disabled = orgsFor(`${b.dataset.val}|${curSpec}|${curWard}`).length===0; }
   for(const b of document.getElementById('wardPills').children){ b.disabled = orgsFor(`${curOrigin}|${curSpec}|${b.dataset.val}`).length===0; }
   const avYears=yearsForKey(stratKey());
@@ -302,7 +301,7 @@ function updatePillAvailability(){
 }
 
 function rebuildOrgOptions(){
-  const avail=orgsFor(stratKey());
+  const avail=orgsByN(stratKey());   /* เรียงเชื้อที่พบบ่อยขึ้นก่อน */
   orgList.innerHTML='';
   avail.forEach(o=>{ const op=document.createElement('option'); op.value=o; orgList.appendChild(op); });
   if(!avail.includes(curOrg)) curOrg=avail[0]||null;
@@ -310,34 +309,21 @@ function rebuildOrgOptions(){
   return avail;
 }
 
-/* ---- เลือกตามกลุ่มอาการ (syndrome) ---- */
-const SYNDROMES=[
-  {key:'uti', label:'ทางเดินปัสสาวะ (UTI)', spec:'Urine', orgs:['Escherichia coli','Klebsiella pneumoniae','Proteus mirabilis','Enterococcus faecalis','Pseudomonas aeruginosa']},
-  {key:'pneu',label:'ปอดอักเสบ/ทางเดินหายใจ', spec:'Sputum', orgs:['Klebsiella pneumoniae','Pseudomonas aeruginosa','Acinetobacter baumannii','Staphylococcus aureus','Streptococcus pneumoniae','Escherichia coli']},
-  {key:'bsi', label:'ติดเชื้อในกระแสเลือด (Sepsis)', spec:'Blood', orgs:['Escherichia coli','Klebsiella pneumoniae','Staphylococcus aureus','Pseudomonas aeruginosa','Acinetobacter baumannii','Enterococcus faecium']},
-  {key:'ssti',label:'ผิวหนัง/เนื้อเยื่ออ่อน', spec:'ALL', orgs:['Staphylococcus aureus','Beta-hemolytic Streptococci','Escherichia coli','Pseudomonas aeruginosa']},
-  {key:'iai', label:'ในช่องท้อง (IAI)', spec:'ALL', orgs:['Escherichia coli','Klebsiella pneumoniae','Enterococcus faecalis','Pseudomonas aeruginosa']},
-];
-function buildSynPills(){
-  const el=document.getElementById('synPills'); el.innerHTML='';
-  SYNDROMES.forEach(sy=>{ const b=document.createElement('button'); b.className='pill'; b.type='button';
-    b.textContent=sy.label; b.dataset.key=sy.key; b.onclick=()=>applySyndrome(sy); el.appendChild(b); });
+/* ---- เลือกกลุ่มตามสิ่งส่งตรวจ (Specimen) — เป็นตัวกรองสิ่งส่งตรวจในตัว ---- */
+function buildSpecGroups(){
+  const el=document.getElementById('specGroups'); el.innerHTML='';
+  DATA.meta.specimens.forEach(s=>{ const b=document.createElement('button'); b.className='pill'; b.type='button';
+    b.textContent=s.label; b.dataset.val=s.key;
+    b.onclick=()=>{ if(b.disabled)return; curSpec=s.key;
+      if(!orgsFor(stratKey()).length){ curOrigin='ALL'; curWard='ALL'; }  /* กันคอมโบที่ไม่มีข้อมูล */
+      curOrg=null; showAll=false; refresh(); };
+    el.appendChild(b); });
 }
-buildSynPills();
-function applySyndrome(sy){
-  curSyn=(curSyn&&curSyn.key===sy.key)?null:sy;   /* กดซ้ำ = ปิด */
-  if(curSyn){
-    if(sy.spec==='ALL'||orgsFor(`${curOrigin}|${sy.spec}|${curWard}`).length) curSpec=sy.spec;
-    const avail=orgsFor(stratKey()); const first=sy.orgs.find(o=>avail.includes(o));
-    if(first) curOrg=first;
-  }
-  showAll=false; refresh();
-}
-function renderSynOrgs(){
-  const el=document.getElementById('synOrgs');
-  if(!curSyn){ el.innerHTML=''; return; }
-  const avail=orgsFor(stratKey());
-  const list=curSyn.orgs.filter(o=>avail.includes(o));
+buildSpecGroups();
+/* เชื้อที่พบบ่อยในสิ่งส่งตรวจที่เลือก (เรียงตามจำนวน isolate) */
+function renderCommonOrgs(){
+  const el=document.getElementById('commonOrgs');
+  const list=orgsByN(stratKey()).slice(0,8);
   el.innerHTML = (list.length?`<span style="font-size:.78rem;color:var(--muted);align-self:center;margin-right:2px">เชื้อที่พบบ่อย:</span>`:'')
     + list.map(o=>`<button type="button" class="ochip${o===curOrg?' on':''}" onclick="pickOrg('${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
 }
@@ -373,10 +359,9 @@ function band(s){return s>=80?'high':s>=60?'mid':'low';}
 
 function refresh(){
   updatePillAvailability();
-  setPressed('specPills',curSpec); setPressed('originPills',curOrigin); setPressed('wardPills',curWard); setPressed('yearPills',curYear);
-  for(const b of document.getElementById('synPills').children) b.setAttribute('aria-pressed', !!(curSyn&&b.dataset.key===curSyn.key));
+  setPressed('specGroups',curSpec); setPressed('originPills',curOrigin); setPressed('wardPills',curWard); setPressed('yearPills',curYear);
   const avail=rebuildOrgOptions();
-  renderSynOrgs();
+  renderCommonOrgs();
   const nd=document.getElementById('nodata'), res=document.getElementById('results');
   if(!curOrg){
     res.hidden=true; nd.hidden=false;
@@ -425,7 +410,7 @@ function render(){
     ? `<b>ดื้อตามธรรมชาติ (intrinsic R) — ไม่ควรใช้กับเชื้อนี้:</b><br>`+ir.map(x=>`<span class="ir">${x}</span>`).join('')
     : '';
 
-  renderSynOrgs();
+  renderCommonOrgs();
   renderTrend(key);
   writeHash();
 }
@@ -601,6 +586,6 @@ async function hitCounter(){
 hitCounter();
 
 readHash();
-if(!curOrg || !orgsFor(stratKey()).includes(curOrg)) curOrg=orgsFor(stratKey())[0];
+if(!curOrg || !orgsFor(stratKey()).includes(curOrg)) curOrg=orgsByN(stratKey())[0];
 refresh();
 </script>
