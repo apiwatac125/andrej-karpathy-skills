@@ -50,7 +50,9 @@ a,button,.pill,.chip,.dl-btn,.theme-btn,.bar>i,.morebtn{transition:all .16s ease
 
 /* ---- masthead ---- */
 .masthead{background:linear-gradient(180deg,var(--surface),var(--surface2));position:relative;box-shadow:var(--shadow-sm)}
-.masthead::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--grad)}
+.masthead::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;
+  background:linear-gradient(90deg,var(--brand) 0%,var(--gold) 30%,var(--gold-2) 50%,var(--gold) 70%,var(--brand) 100%);
+  box-shadow:0 2px 10px rgba(216,165,33,.55)}
 .masthead-in{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;
   justify-content:space-between;gap:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:13px;min-width:0}
