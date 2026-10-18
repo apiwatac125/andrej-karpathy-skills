@@ -1,0 +1,591 @@
+<title>Antibiogram เลิดสิน</title>
+<style>
+/* Premium Government-Formal — IBM Plex Sans Thai display + Sarabun body; blue+gold brand; layered depth */
+:root{
+  --brand:#1689c4; --brand-2:#0c6697; --brand-fg:#ffffff; --gold:#d8a521; --gold-2:#f2c45a;
+  --bg:#eaf0f4; --surface:#ffffff; --surface2:#f3f8fb; --fg:#13222c; --muted:#5a6b76;
+  --line:#dbe5ec; --line-strong:#c3d1db; --accent:#1180b9; --accent-weak:#e6f3fb; --accent-fg:#ffffff;
+  --sus-high:#1f9d57; --sus-high-2:#2cbd6d; --sus-mid:#c7880a; --sus-mid-2:#e0a81f; --sus-low:#cf4040; --sus-low-2:#e05c5c;
+  --font-display:"IBM Plex Sans Thai","Sarabun",-apple-system,sans-serif;
+  --font-body:"Sarabun",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --radius:14px; --radius-sm:9px;
+  --shadow-sm:0 1px 2px rgba(16,36,52,.06);
+  --shadow:0 1px 2px rgba(16,36,52,.05),0 10px 26px rgba(16,36,52,.08);
+  --card-top:inset 0 1px 0 rgba(255,255,255,.7);
+  --grad:linear-gradient(90deg,var(--brand),var(--gold));
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --brand:#33a9e2; --brand-2:#1b89c2; --brand-fg:#05161f; --gold:#edb63a; --gold-2:#f7cf6a;
+  --bg:#0b1218; --surface:#131e26; --surface2:#17232c; --fg:#e6eef3; --muted:#92a5b0;
+  --line:#26323b; --line-strong:#384954; --accent:#4bbdf0; --accent-weak:#0f2735; --accent-fg:#05161f;
+  --sus-high:#34c576; --sus-high-2:#49d98a; --sus-mid:#e0a92a; --sus-mid-2:#f0bf47; --sus-low:#f06a6a; --sus-low-2:#ff8686;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  --card-top:inset 0 1px 0 rgba(255,255,255,.05);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --brand:#33a9e2; --brand-2:#1b89c2; --brand-fg:#05161f; --gold:#edb63a; --gold-2:#f7cf6a;
+  --bg:#0b1218; --surface:#131e26; --surface2:#17232c; --fg:#e6eef3; --muted:#92a5b0;
+  --line:#26323b; --line-strong:#384954; --accent:#4bbdf0; --accent-weak:#0f2735; --accent-fg:#05161f;
+  --sus-high:#34c576; --sus-high-2:#49d98a; --sus-mid:#e0a92a; --sus-mid-2:#f0bf47; --sus-low:#f06a6a; --sus-low-2:#ff8686;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  --card-top:inset 0 1px 0 rgba(255,255,255,.05);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.6;font-size:15.5px;
+  -webkit-font-smoothing:antialiased}
+a,button,.pill,.chip,.dl-btn,.theme-btn,.bar>i,.morebtn{transition:all .16s ease}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---- masthead ---- */
+.masthead{background:linear-gradient(180deg,var(--surface),var(--surface2));position:relative;box-shadow:var(--shadow-sm)}
+.masthead::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;
+  background:linear-gradient(90deg,var(--brand) 0%,var(--gold) 30%,var(--gold-2) 50%,var(--gold) 70%,var(--brand) 100%);
+  box-shadow:0 2px 10px rgba(216,165,33,.55)}
+.masthead-in{max-width:1080px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.logo{width:52px;height:52px;flex:0 0 auto;object-fit:contain}
+.brandtext{min-width:0}
+.hosp-th{font-family:var(--font-display);font-size:1.28rem;font-weight:700;line-height:1.12;letter-spacing:-.01em;color:var(--brand)}
+.hosp-en{font-size:.64rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;font-weight:700;margin-top:3px}
+.masthead-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.visitors{font-size:.76rem;color:var(--muted);background:var(--surface2);border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:7px 11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dl-btn{background:var(--brand);color:var(--brand-fg);border:1px solid transparent;border-radius:var(--radius-sm);
+  padding:8px 15px;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;
+  box-shadow:0 2px 10px rgba(18,131,196,.28)}
+.dl-btn:hover{background:var(--brand-2);transform:translateY(-1px);box-shadow:0 4px 14px rgba(18,131,196,.34)}
+.dl-btn:disabled{opacity:.6;cursor:wait;transform:none}
+.theme-btn{background:var(--surface);border:1px solid var(--line-strong);color:var(--muted);border-radius:var(--radius-sm);
+  padding:8px 13px;font:inherit;font-size:.8rem;cursor:pointer}
+.theme-btn:hover{border-color:var(--brand);color:var(--brand)}
+
+.wrap{max-width:1080px;margin:0 auto;padding-block:26px 52px;padding-left:20px;padding-right:20px}
+.titlebar{margin-bottom:22px}
+.eyebrow{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+h1{font-family:var(--font-display);font-size:1.62rem;font-weight:700;margin:0;letter-spacing:-.015em;
+  text-wrap:balance;line-height:1.2}
+.sub{color:var(--muted);font-size:.9rem;margin:6px 0 0;max-width:74ch}
+.tag{display:inline-block;background:var(--accent-weak);color:var(--brand);font-size:.66rem;font-weight:700;
+  padding:3px 10px;border-radius:999px;letter-spacing:.03em;vertical-align:middle;margin-left:10px;
+  border:1px solid var(--brand)}
+
+.controls{display:flex;flex-direction:column;gap:16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:20px;box-shadow:var(--card-top),var(--shadow);margin-bottom:20px}
+.filterrow{display:flex;flex-wrap:wrap;gap:18px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field.grow{width:100%}
+.field label{font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+select,input#org{font:inherit;font-size:1rem;padding:11px 13px;border-radius:var(--radius-sm);border:1px solid var(--line-strong);
+  background:var(--surface2);color:var(--fg);width:100%;cursor:pointer;box-sizing:border-box}
+input#org{cursor:text}
+select:focus-visible,input#org:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.synorgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.synorgs:empty{display:none}
+.synorgs .ochip{font:inherit;font-size:.82rem;padding:6px 11px;border-radius:999px;border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--fg);cursor:pointer;transition:.15s}
+.synorgs .ochip:hover{border-color:var(--brand);color:var(--brand)}
+.synorgs .ochip.on{background:var(--brand);color:#fff;border-color:transparent}
+.intrinsic{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:.82rem;color:var(--muted)}
+.intrinsic:empty{display:none}
+.intrinsic b{color:var(--fg);font-weight:700}
+.intrinsic .ir{display:inline-block;margin:3px 5px 0 0;padding:3px 9px;border-radius:999px;background:var(--surface2);
+  border:1px solid var(--line);color:var(--muted);text-decoration:line-through;text-decoration-color:var(--sus-low)}
+.pillrow{display:flex;gap:7px;flex-wrap:wrap}
+.pill{font:inherit;font-size:.85rem;padding:8px 14px;border-radius:8px;border:1px solid var(--line-strong);
+  background:var(--surface2);color:var(--muted);cursor:pointer;white-space:nowrap}
+.pill:hover:not(:disabled):not([aria-pressed="true"]){border-color:var(--brand);color:var(--brand)}
+.pill[aria-pressed="true"]{background:var(--brand);color:var(--brand-fg);border-color:var(--brand);font-weight:700;
+  box-shadow:0 2px 9px rgba(18,131,196,.26)}
+.pill:disabled{opacity:.4;cursor:not-allowed}
+
+.grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}
+@media (max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;
+  box-shadow:var(--card-top),var(--shadow);min-width:0}
+.card h2{font-family:var(--font-display);font-size:1.12rem;margin:0 0 4px;font-weight:700;padding-left:13px;position:relative}
+.card h2::before{content:"";position:absolute;left:0;top:.14em;bottom:.08em;width:4px;border-radius:3px;background:var(--grad)}
+.card .note{color:var(--muted);font-size:.79rem;margin:0 0 15px}
+
+.rank{display:flex;flex-direction:column;gap:13px}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center}
+.row .dname{font-weight:600;font-size:.97rem;min-width:0}
+.row .dmeta{font-size:.72rem;color:var(--muted);font-weight:400}
+.row .pct{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.3rem;justify-self:end;line-height:1}
+.bar{grid-column:1/-1;height:9px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:999px}
+.b-high{background:linear-gradient(90deg,var(--sus-high),var(--sus-high-2))}
+.b-mid{background:linear-gradient(90deg,var(--sus-mid),var(--sus-mid-2))}
+.b-low{background:linear-gradient(90deg,var(--sus-low),var(--sus-low-2))}
+.reserve-chip{font-size:.63rem;font-weight:700;color:var(--sus-mid);border:1px solid var(--sus-mid);
+  border-radius:5px;padding:0 5px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+.morebtn{margin-top:14px;background:none;border:none;color:var(--brand);font:inherit;font-weight:700;
+  font-size:.85rem;cursor:pointer;padding:4px 0}
+.morebtn:hover{color:var(--brand-2)}
+
+.bucket{border-left:3px solid var(--line);padding:2px 0 2px 13px;margin-bottom:15px}
+.bucket h3{margin:0 0 6px;font-size:.78rem;font-weight:700;letter-spacing:.02em}
+.bucket.good{border-color:var(--sus-high)} .bucket.good h3{color:var(--sus-high)}
+.bucket.alt{border-color:var(--sus-mid)} .bucket.alt h3{color:var(--sus-mid)}
+.bucket.res{border-color:var(--muted)} .bucket.res h3{color:var(--muted)}
+.drugset{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-size:.85rem;padding:7px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--line-strong);
+  font-variant-numeric:tabular-nums;box-shadow:var(--card-top)}
+.chip:hover{transform:translateY(-1px);box-shadow:var(--card-top),0 3px 10px rgba(16,36,52,.1)}
+.chip b{font-weight:700;color:var(--brand)}
+.empty{color:var(--muted);font-size:.83rem;font-style:italic}
+.disclaim{font-size:.75rem;color:var(--muted);background:var(--surface2);border:1px solid var(--line);
+  border-radius:var(--radius-sm);padding:11px 13px;margin-top:4px}
+.scope{display:inline-block;font-size:.74rem;color:var(--brand);font-weight:700;margin:-4px 0 15px;
+  background:var(--accent-weak);border:1px solid var(--line-strong);border-radius:999px;padding:4px 13px}
+
+.nodata{background:var(--surface);border:1px dashed var(--line-strong);border-radius:var(--radius);padding:34px 18px;
+  text-align:center;color:var(--muted);box-shadow:var(--shadow)}
+
+.chartcard{grid-column:1/-1}
+svg{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:12px}
+.legend span{font-size:.78rem;display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.legend span i{width:16px;height:3px;border-radius:2px;display:inline-block}
+.trend-picker{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 14px}
+.tchip{font:inherit;font-size:12.5px;line-height:1;padding:6px 10px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+  display:inline-flex;align-items:center;gap:5px}
+.tchip:hover{border-color:var(--brand);color:var(--fg)}
+.tchip.on{color:#fff;border-color:transparent;background:var(--c,var(--brand));box-shadow:0 1px 5px rgba(12,102,151,.25)}
+.tchip b{font-weight:700;opacity:.8}
+.tchip.on b{opacity:.95}
+.tchip.ctrl{color:var(--fg);background:var(--surface2);border-color:var(--line);font-weight:600}
+.tchip.ctrl:hover{border-color:var(--brand);color:var(--brand)}
+.tchip.reset{color:var(--brand);background:transparent;border-style:dashed}
+.tchip.reset:hover{background:var(--surface2)}
+.tctl-sep{flex-basis:100%;height:0}
+footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;border-top:1px solid var(--line);
+  text-align:center;line-height:1.7}
+</style>
+
+<div class="masthead">
+  <div class="masthead-in">
+    <div class="brand">
+      <img class="logo" id="hospLogo" alt="ตราโรงพยาบาลเลิดสิน" src="logo.png">
+      <div class="brandtext">
+        <div class="hosp-th">โรงพยาบาลเลิดสิน</div>
+        <div class="hosp-en">Lerdsin Hospital · กรมการแพทย์</div>
+      </div>
+    </div>
+    <div class="masthead-right">
+      <span class="visitors" id="visitors" hidden></span>
+      <button class="dl-btn" id="dlBtn" type="button">⬇️ ดาวน์โหลด PDF</button>
+      <button class="theme-btn" id="themeBtn" type="button">สลับธีม</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="titlebar">
+    <div class="eyebrow">ระบบสนับสนุนการตัดสินใจการใช้ยาต้านจุลชีพ · Antimicrobial Stewardship</div>
+    <h1>ระบบแนะนำยาต้านจุลชีพจาก Antibiogram <span class="tag">ข้อมูลจริง พ.ศ. 2561–2568</span></h1>
+    <p class="sub">เลือกเชื้อและกลุ่มผู้ป่วย เพื่อดูยาที่เชื้อยังไวสูงสุด คำแนะนำการให้ยา empiric และแนวโน้มการดื้อยา — อ้างอิงหลัก CLSI M39</p>
+  </div>
+
+  <div class="controls">
+    <div class="field grow">
+      <label>เลือกกลุ่มตามสิ่งส่งตรวจ (Specimen) — ตั้งตัวกรอง + แสดงเชื้อที่พบบ่อย</label>
+      <div class="pillrow" id="specGroups"></div>
+    </div>
+    <div class="field grow">
+      <label for="org">เชื้อก่อโรค (Organism) — พิมพ์ค้นหาได้</label>
+      <input id="org" list="orgList" autocomplete="off" spellcheck="false" placeholder="พิมพ์หรือเลือกชื่อเชื้อ เช่น Escherichia coli…">
+      <datalist id="orgList"></datalist>
+      <div class="synorgs" id="commonOrgs"></div>
+    </div>
+    <div class="filterrow">
+      <div class="field"><label>กลุ่มผู้ป่วย</label><div class="pillrow" id="originPills"></div></div>
+      <div class="field"><label>หอผู้ป่วย (Ward)</label><div class="pillrow" id="wardPills"></div></div>
+      <div class="field"><label>ปีข้อมูล</label><div class="pillrow" id="yearPills"></div></div>
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="grid">
+      <div class="card">
+        <h2>ยาที่เชื้อยังไวสูงสุด</h2>
+        <p class="scope" id="scope"></p>
+        <p class="note" id="rankNote"></p>
+        <div class="rank" id="rankList"></div>
+        <button class="morebtn" id="moreBtn" type="button" hidden>ดูยาทั้งหมด ▾</button>
+        <div class="intrinsic" id="intrinsic"></div>
+      </div>
+      <div class="card">
+        <h2>คำแนะนำ empiric</h2>
+        <p class="note">จัดกลุ่มตาม %S และหลัก antimicrobial stewardship (เลือกยาแคบก่อน สงวนยากลุ่มสุดท้าย)</p>
+        <div id="empiric"></div>
+        <p class="disclaim">อิงจาก %S เท่านั้น — ต้องพิจารณาร่วมกับอาการ ตำแหน่งติดเชื้อ (เช่น tigecycline/colistin ไม่เหมาะกับการติดเชื้อในเลือด/ทางเดินปัสสาวะบางกรณี) การทำงานของไต-ตับ ประวัติแพ้ยา และปรึกษาแพทย์ผู้เชี่ยวชาญ/ID เมื่อจำเป็น</p>
+      </div>
+      <div class="card chartcard">
+        <h2>แนวโน้มการดื้อยาข้ามปี (%S)</h2>
+        <p class="note" id="trendNote"></p>
+        <div class="trend-picker" id="trendPicker"></div>
+        <div id="chart"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nodata" id="nodata" hidden></div>
+
+  <footer>
+    ข้อมูลจาก <b>Antibiogram โรงพยาบาลเลิดสิน พ.ศ. 2561–2568 (ค.ศ. 2018–2025)</b> · %S คำนวณแบบ first isolate ต่อผู้ป่วย ตามหลัก CLSI M39<br>
+    %S ≥ 80 = เขียว · 60–79 = เหลือง · &lt; 60 = แดง · N = จำนวน isolate · รายงานเฉพาะกลุ่มที่ N ≥ 30 · เป็นข้อมูลสนับสนุนการตัดสินใจ ไม่ใช่คำสั่งการรักษา
+  </footer>
+</div>
+
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@500;600;700&family=Sarabun:wght@400;600;700&display=swap">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+const DATA = __DATA__;
+const RESERVE = new Set(["Meropenem","Imipenem","Doripenem","Ertapenem","Colistin","Tigecycline","Ceftazidime/avibactam"]);
+const TIER = {"Penicillin":1,"Ampicillin":1,"Amoxicillin/Cla":2,"Ampicillin/Sulb":2,"Trimethoprim/Sulfa":2,
+  "Cefoxitin":3,"Ceftriaxone":3,"Cefotaxime":3,"Ceftazidime":3,"Doxycycline":3,"Chloramphenicol":3,
+  "Erythromycin":3,"Clindamycin":3,"Gentamicin":3,"Amikacin":3,"Ciprofloxacin":3,"Levofloxacin":3,
+  "Gentamicin (high)":3,"Cefepime":4,"Piperacillin/Tazobactam":4,"Cefoperazone/Sulbactam":4,"Vancomycin":4,
+  "Ertapenem":5,"Meropenem":5,"Imipenem":5,"Doripenem":5,"Ceftazidime/avibactam":6,"Colistin":6,"Tigecycline":6,
+  "Cefazolin":3,"Cephalothin":3,"Cefoperazone":4,"Netilmicin":3,"Norfloxacin":3,"Sitafloxacin":3,"Tetracycline":3};
+const LINE_COLORS = ["#2e86c1","#e67e22","#8e44ad","#159e82","#c0392b","#596b7d"];
+
+const years = DATA.meta.years.map(String);
+const ORIGIN_LABEL = {"ALL":"ทั้งหมด","CAI":"ชุมชน (CAI)","HAI":"โรงพยาบาล (HAI)"};
+const WARD_LABEL = {}; DATA.meta.wards.forEach(w=>WARD_LABEL[w.key]=w.label);
+let curOrg=null, curYear=years[years.length-1], curOrigin="ALL", curSpec="ALL", curWard="ALL", showAll=false;
+let trendSel=null, trendActive=[];  /* trendSel: null=auto-pick, else Set of chosen drug names (persists across organisms) */
+
+const orgSel=document.getElementById('org');
+const orgList=document.getElementById('orgList');
+const stratKey=()=>`${curOrigin}|${curSpec}|${curWard}`;
+const orgsFor=key=>Object.keys(DATA.organisms).filter(o=>DATA.organisms[o].strata[key]);
+const nMax=(org,key)=>{const s=DATA.organisms[org].strata[key]; return s?Math.max(0,...Object.values(s.N)):0;};
+const orgsByN=key=>orgsFor(key).slice().sort((a,b)=>nMax(b,key)-nMax(a,key));
+const yearsForKey=key=>years.filter(y=>Object.keys(DATA.organisms).some(o=>{const s=DATA.organisms[o].strata[key];return s&&s.N[y]!=null;}));
+
+/* build pill groups */
+function buildPills(elId, items, getCur, setCur){
+  const el=document.getElementById(elId); el.innerHTML='';
+  items.forEach(it=>{
+    const b=document.createElement('button'); b.className='pill'; b.type='button';
+    b.textContent=it.label; b.dataset.val=it.val;
+    b.onclick=()=>{ if(b.disabled)return; setCur(it.val); refresh(); };
+    el.appendChild(b);
+  });
+}
+buildPills('originPills', DATA.meta.origins.map(o=>({val:o,label:ORIGIN_LABEL[o]})), ()=>curOrigin, v=>{curOrigin=v;showAll=false;});
+buildPills('wardPills', DATA.meta.wards.map(w=>({val:w.key,label:w.label})), ()=>curWard, v=>{curWard=v;showAll=false;});
+buildPills('yearPills', years.map(y=>({val:y,label:y})), ()=>curYear, v=>{curYear=v;});
+
+function setPressed(elId,cur){ for(const b of document.getElementById(elId).children) b.setAttribute('aria-pressed', b.dataset.val===cur); }
+/* disable combos that yield no organisms at all */
+function updatePillAvailability(){
+  for(const b of document.getElementById('specGroups').children){ b.disabled = orgsFor(`${curOrigin}|${b.dataset.val}|${curWard}`).length===0; }
+  for(const b of document.getElementById('originPills').children){ b.disabled = orgsFor(`${b.dataset.val}|${curSpec}|${curWard}`).length===0; }
+  for(const b of document.getElementById('wardPills').children){ b.disabled = orgsFor(`${curOrigin}|${curSpec}|${b.dataset.val}`).length===0; }
+  const avYears=yearsForKey(stratKey());
+  for(const b of document.getElementById('yearPills').children){ b.disabled = !avYears.includes(b.dataset.val); }
+  if(avYears.length && !avYears.includes(curYear)) curYear=avYears[avYears.length-1];
+}
+
+function rebuildOrgOptions(){
+  const avail=orgsByN(stratKey());   /* เรียงเชื้อที่พบบ่อยขึ้นก่อน */
+  orgList.innerHTML='';
+  avail.forEach(o=>{ const op=document.createElement('option'); op.value=o; orgList.appendChild(op); });
+  if(!avail.includes(curOrg)) curOrg=avail[0]||null;
+  orgSel.value=curOrg||'';
+  return avail;
+}
+
+/* ---- เลือกกลุ่มตามสิ่งส่งตรวจ (Specimen) — เป็นตัวกรองสิ่งส่งตรวจในตัว ---- */
+function buildSpecGroups(){
+  const el=document.getElementById('specGroups'); el.innerHTML='';
+  DATA.meta.specimens.forEach(s=>{ const b=document.createElement('button'); b.className='pill'; b.type='button';
+    b.textContent=s.label; b.dataset.val=s.key;
+    b.onclick=()=>{ if(b.disabled)return; curSpec=s.key;
+      if(!orgsFor(stratKey()).length){ curOrigin='ALL'; curWard='ALL'; }  /* กันคอมโบที่ไม่มีข้อมูล */
+      curOrg=null; showAll=false; refresh(); };
+    el.appendChild(b); });
+}
+buildSpecGroups();
+/* เชื้อที่พบบ่อยในสิ่งส่งตรวจที่เลือก (เรียงตามจำนวน isolate) */
+function renderCommonOrgs(){
+  const el=document.getElementById('commonOrgs');
+  const list=orgsByN(stratKey()).slice(0,8);
+  el.innerHTML = (list.length?`<span style="font-size:.78rem;color:var(--muted);align-self:center;margin-right:2px">เชื้อที่พบบ่อย:</span>`:'')
+    + list.map(o=>`<button type="button" class="ochip${o===curOrg?' on':''}" onclick="pickOrg('${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
+}
+function pickOrg(o){ curOrg=o; orgSel.value=o; showAll=false; render(); }
+
+/* ---- จดจำสถานะผ่าน URL (บุ๊กมาร์ก/แชร์มุมมองได้) ---- */
+function writeHash(){
+  const p=new URLSearchParams();
+  if(curOrg) p.set('org',curOrg);
+  if(curOrigin!=='ALL') p.set('o',curOrigin);
+  if(curSpec!=='ALL') p.set('s',curSpec);
+  if(curWard!=='ALL') p.set('w',curWard);
+  if(curYear) p.set('y',curYear);
+  try{ history.replaceState(null,'','#'+p.toString()); }catch(e){}
+}
+function readHash(){
+  const h=location.hash.replace(/^#/,''); if(!h) return;
+  const p=new URLSearchParams(h);
+  const sk=DATA.meta.specimens.map(s=>s.key), wk=DATA.meta.wards.map(w=>w.key);
+  if(DATA.meta.origins.includes(p.get('o'))) curOrigin=p.get('o');
+  if(sk.includes(p.get('s'))) curSpec=p.get('s');
+  if(wk.includes(p.get('w'))) curWard=p.get('w');
+  if(years.includes(p.get('y'))) curYear=p.get('y');
+  if(p.get('org')&&DATA.organisms[p.get('org')]) curOrg=p.get('org');
+}
+
+function drugsFor(org,key,year){
+  const s=DATA.organisms[org].strata[key]; if(!s)return [];
+  const out=[]; for(const name in s.drugs){ if(s.drugs[name][year]) out.push({name,s:s.drugs[name][year].S,n:s.drugs[name][year].n}); }
+  return out;
+}
+function band(s){return s>=80?'high':s>=60?'mid':'low';}
+
+function refresh(){
+  updatePillAvailability();
+  setPressed('specGroups',curSpec); setPressed('originPills',curOrigin); setPressed('wardPills',curWard); setPressed('yearPills',curYear);
+  const avail=rebuildOrgOptions();
+  renderCommonOrgs();
+  const nd=document.getElementById('nodata'), res=document.getElementById('results');
+  if(!curOrg){
+    res.hidden=true; nd.hidden=false;
+    nd.innerHTML=`ไม่มีเชื้อที่รายงานในกลุ่มนี้ (ทุกเชื้อมี N &lt; 30)<br>ลองเปลี่ยนตัวกรองเป็น “ทั้งหมด”`;
+    return;
+  }
+  res.hidden=false; nd.hidden=true;
+  render();
+}
+
+function render(){
+  const key=stratKey();
+  const Nrec=DATA.organisms[curOrg].strata[key].N[curYear]||0;
+  const list=drugsFor(curOrg,key,curYear).sort((a,b)=>b.s-a.s||(TIER[a.name]||9)-(TIER[b.name]||9));
+
+  const specLabel=DATA.meta.specimens.find(s=>s.key===curSpec).label;
+  const wardTxt = curWard==="ALL" ? "" : ` · ${WARD_LABEL[curWard]}`;
+  document.getElementById('scope').textContent=`${specLabel} · กลุ่มผู้ป่วย: ${ORIGIN_LABEL[curOrigin]}${wardTxt}`;
+  document.getElementById('rankNote').textContent=`ปี ${curYear} · N = ${Nrec} · เรียงตาม %S จากมากไปน้อย`;
+
+  const rl=document.getElementById('rankList'); rl.innerHTML='';
+  (showAll?list:list.slice(0,6)).forEach(d=>{
+    const bd=band(d.s); const resv=RESERVE.has(d.name)?`<span class="reserve-chip">สงวน</span>`:'';
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML=`<div class="dname">${d.name}${resv}<div class="dmeta">N=${d.n}</div></div>`+
+      `<div class="pct" style="color:var(--sus-${bd})">${d.s}<span style="font-size:.6em">%</span></div>`+
+      `<div class="bar"><i class="b-${bd}" style="width:${d.s}%"></i></div>`;
+    rl.appendChild(row);
+  });
+  const more=document.getElementById('moreBtn');
+  more.hidden=list.length<=6; more.textContent=showAll?'ย่อ ▴':`ดูยาทั้งหมด (${list.length}) ▾`;
+
+  const preferred=list.filter(d=>d.s>=80&&!RESERVE.has(d.name)).sort((a,b)=>(TIER[a.name]||9)-(TIER[b.name]||9)||b.s-a.s);
+  const alt=list.filter(d=>d.s>=60&&d.s<80&&!RESERVE.has(d.name)).sort((a,b)=>(TIER[a.name]||9)-(TIER[b.name]||9)||b.s-a.s);
+  const reserve=list.filter(d=>RESERVE.has(d.name)&&d.s>=60).sort((a,b)=>b.s-a.s);
+  const chip=d=>`<span class="chip">${d.name} <b>${d.s}%</b></span>`;
+  const bucket=(cls,title,arr,empt)=>`<div class="bucket ${cls}"><h3>${title}</h3>`+
+    (arr.length?`<div class="drugset">${arr.map(chip).join('')}</div>`:`<div class="empty">${empt}</div>`)+`</div>`;
+  document.getElementById('empiric').innerHTML=
+    bucket('good','แนะนำเป็น empiric (ไวสูง ≥80% · เลือกตัวแคบที่สุดก่อน)',preferred.slice(0,5),'ไม่มียาตัวแคบที่ %S ≥ 80% — พิจารณายากลุ่มสงวน/ปรึกษา ID')+
+    bucket('alt','ทางเลือก (60–79%)',alt.slice(0,5),'—')+
+    bucket('res','สงวนไว้สำหรับเชื้อดื้อ / ปรึกษา ID (แม้ %S สูง)',reserve.slice(0,6),'—');
+
+  const ir=DATA.organisms[curOrg].intrinsicR||[];
+  document.getElementById('intrinsic').innerHTML = ir.length
+    ? `<b>ดื้อตามธรรมชาติ (intrinsic R) — ไม่ควรใช้กับเชื้อนี้:</b><br>`+ir.map(x=>`<span class="ir">${x}</span>`).join('')
+    : '';
+
+  renderCommonOrgs();
+  renderTrend(key);
+  writeHash();
+}
+
+function renderTrend(key){
+  const y0=years[0], y1=years[years.length-1];
+  const d=DATA.organisms[curOrg].strata[key].drugs;
+  const plottable=Object.keys(d).filter(n=>years.some(y=>d[n][y]));
+  /* auto-pick: ยาที่ %S ลดลงมากสุด (y0->y1) มิฉะนั้นเอา %S สูงสุดของปีที่เลือก */
+  const cand=drugsFor(curOrg,key,curYear).map(x=>{const a=d[x.name][y0],b=d[x.name][y1];return {name:x.name,s:x.s,drop:(a&&b)?a.S-b.S:-999};});
+  let pick=cand.filter(x=>x.drop>-999).sort((a,b)=>b.drop-a.drop).slice(0,5);
+  if(!pick.length||pick[0].drop<=1) pick=cand.slice().sort((a,b)=>b.s-a.s).slice(0,5);
+  const autoNames=pick.map(x=>x.name);
+  const active=(trendSel?plottable.filter(n=>trendSel.has(n)):autoNames.filter(n=>plottable.includes(n)));
+  trendActive=active.slice();
+  const colorOf={}; active.forEach((n,i)=>colorOf[n]=LINE_COLORS[i%LINE_COLORS.length]);
+
+  document.getElementById('trendNote').textContent = trendSel
+    ? `เลือกยาที่ต้องการเปรียบเทียบเอง · ปี ${y0}–${y1}`
+    : `ค่าเริ่มต้น: ยาที่ %S ลดลงมากที่สุด (เฝ้าระวังการดื้อยา) · ปี ${y0}–${y1} — กดเลือกยาเองได้`;
+
+  /* ปุ่มเลือกยา (เรียงตามลำดับยามาตรฐาน) */
+  const esc=s=>s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const chipDrugs=plottable.slice().sort((a,b)=>((typeof ORD!=='undefined'?ORD[a]:0)??99)-((typeof ORD!=='undefined'?ORD[b]:0)??99)||a.localeCompare(b));
+  const activeSet=new Set(active);
+  const ctrls=`<span class="tctl-sep"></span>`
+    + `<button type="button" class="tchip ctrl" onclick="trendSelectAll()">เลือกทั้งหมด</button>`
+    + `<button type="button" class="tchip ctrl" onclick="trendClear()">ล้าง</button>`
+    + (trendSel?`<button type="button" class="tchip reset" onclick="trendSel=null;renderTrend(stratKey());">↺ ค่าเริ่มต้น</button>`:'');
+  document.getElementById('trendPicker').innerHTML =
+    chipDrugs.map(n=>{const on=activeSet.has(n); const sv=d[n][curYear]?d[n][curYear].S:null;
+      return `<button type="button" class="tchip${on?' on':''}"${on?` style="--c:${colorOf[n]}"`:''} onclick="toggleTrendDrug('${esc(n)}')">${n}${sv!=null?` <b>${sv}%</b>`:''}</button>`;}).join('')
+    + ctrls;
+
+  const W=640,H=300,ml=42,mr=34,mt=14,mb=34,pw=W-ml-mr,ph=H-mt-mb;
+  const xs=years.map((y,i)=>years.length>1?ml+pw*i/(years.length-1):ml+pw/2);
+  const yOf=v=>mt+ph*(1-v/100); let g='';
+  [0,25,50,75,100].forEach(v=>{const y=yOf(v);
+    g+=`<line x1="${ml}" y1="${y}" x2="${W-mr}" y2="${y}" stroke="var(--line)" stroke-width="1" ${v?'stroke-dasharray="3 5"':''}/>`;
+    g+=`<text x="${ml-8}" y="${y+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;});
+  years.forEach((y,i)=>{g+=`<text x="${xs[i]}" y="${H-12}" text-anchor="middle" font-size="12" fill="var(--muted)">${y}</text>`;});
+  g+=`<text x="12" y="${mt+ph/2}" transform="rotate(-90 12 ${mt+ph/2})" text-anchor="middle" font-size="11" fill="var(--muted)">%S</text>`;
+  const leg=[];
+  active.forEach((name)=>{
+    const col=colorOf[name];
+    const pts=years.map((y,i)=>d[name][y]?{x:xs[i],v:d[name][y].S}:null).filter(Boolean);
+    if(pts.length){
+      const path=pts.map((p,i)=>(i?'L':'M')+p.x+' '+yOf(p.v)).join(' ');
+      g+=`<path d="${path}" fill="none" stroke="var(--surface)" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+      g+=`<path d="${path}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+      pts.forEach((p,i)=>{const last=i===pts.length-1;
+        g+=`<circle cx="${p.x}" cy="${yOf(p.v)}" r="${last?6:4.5}" fill="var(--surface)"/>`;
+        g+=`<circle cx="${p.x}" cy="${yOf(p.v)}" r="${last?4:3}" fill="${col}"/>`;});
+      const last=pts[pts.length-1];
+      g+=`<text x="${last.x+8}" y="${yOf(last.v)+4}" font-size="12" font-weight="700" fill="${col}">${last.v}</text>`;
+    }
+    leg.push(`<span><i style="background:${col}"></i>${name}</span>`);
+  });
+  if(!active.length){
+    const hint=(trendSel&&trendSel.size)
+      ? `ยาที่เลือกไว้ไม่มีผลทดสอบในเชื้อนี้ · กดเลือกยาใหม่ หรือ ↺ ค่าเริ่มต้น`
+      : `เลือกยาที่ต้องการดูจากปุ่มด้านบน`;
+    document.getElementById('chart').innerHTML=`<div class="empty" style="padding:34px 8px">${hint}</div>`;
+    document.getElementById('legend').innerHTML=''; return;
+  }
+  document.getElementById('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="แนวโน้ม %S ข้ามปี" preserveAspectRatio="xMidYMid meet">${g}</svg>`;
+  document.getElementById('legend').innerHTML=leg.join('');
+}
+function toggleTrendDrug(name){
+  if(!trendSel) trendSel=new Set(trendActive);   /* เริ่มจากชุดที่แสดงอยู่ */
+  if(trendSel.has(name)) trendSel.delete(name); else trendSel.add(name);
+  renderTrend(stratKey());
+}
+function trendSelectAll(){
+  const key=stratKey(), d=DATA.organisms[curOrg].strata[key].drugs;
+  trendSel=new Set(Object.keys(d).filter(n=>years.some(y=>d[n][y])));
+  renderTrend(key);
+}
+function trendClear(){ trendSel=new Set(); renderTrend(stratKey()); }
+
+orgSel.onchange=()=>{
+  const avail=orgsFor(stratKey()); let v=orgSel.value.trim();
+  if(!avail.includes(v)){
+    const lv=v.toLowerCase();
+    v=avail.find(o=>o.toLowerCase()===lv)||avail.find(o=>o.toLowerCase().startsWith(lv))||avail.find(o=>o.toLowerCase().includes(lv))||curOrg;
+  }
+  curOrg=v; orgSel.value=v||''; showAll=false; render();
+};
+document.getElementById('moreBtn').onclick=()=>{showAll=!showAll;render();};
+
+const root=document.documentElement, tb=document.getElementById('themeBtn');
+tb.onclick=()=>{const cur=root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  const next=cur==='dark'?'light':'dark'; root.setAttribute('data-theme',next); try{localStorage.setItem('ab_theme',next);}catch(e){}};
+try{const t=localStorage.getItem('ab_theme'); if(t)root.setAttribute('data-theme',t);}catch(e){}
+
+/* ---- ดาวน์โหลด Antibiogram ของปีที่เลือก เป็น PDF (jsPDF) ---- */
+const ABBR={"Ampicillin":"AMP","Amoxicillin/Cla":"AMC","Ampicillin/Sulb":"SAM","Piperacillin/Tazobactam":"TZP",
+"Cefoperazone/Sulbactam":"CSL","Ceftriaxone":"CRO","Cefotaxime":"CTX","Ceftazidime":"CAZ","Cefepime":"FEP",
+"Cefoxitin":"FOX","Ceftazidime/avibactam":"CZA","Ertapenem":"ETP","Meropenem":"MEM","Imipenem":"IPM","Doripenem":"DOR",
+"Amikacin":"AMK","Gentamicin":"GEN","Gentamicin (high)":"GEH","Ciprofloxacin":"CIP","Levofloxacin":"LVX",
+"Trimethoprim/Sulfa":"SXT","Colistin":"CST","Tigecycline":"TGC","Oxacillin":"OXA","Cefoxitin ":"FOX",
+"Vancomycin":"VAN","Erythromycin":"ERY","Clindamycin":"CLI","Chloramphenicol":"CHL","Doxycycline":"DOX","Penicillin":"PEN",
+"Cefazolin":"CFZ","Cephalothin":"CEF","Cefoperazone":"CFP","Netilmicin":"NET","Norfloxacin":"NOR","Sitafloxacin":"SIT","Tetracycline":"TET"};
+const DORDER=["Penicillin","Ampicillin","Amoxicillin/Cla","Ampicillin/Sulb","Piperacillin/Tazobactam","Cefoperazone/Sulbactam",
+"Cefazolin","Cephalothin","Cefoxitin","Cefoperazone","Ceftriaxone","Cefotaxime","Ceftazidime","Cefepime","Ceftazidime/avibactam",
+"Ertapenem","Meropenem","Imipenem","Doripenem","Amikacin","Gentamicin","Gentamicin (high)","Netilmicin",
+"Ciprofloxacin","Levofloxacin","Norfloxacin","Sitafloxacin","Trimethoprim/Sulfa","Chloramphenicol","Doxycycline","Tetracycline","Erythromycin","Clindamycin",
+"Oxacillin","Vancomycin","Tigecycline","Colistin"];
+const ORD={}; DORDER.forEach((d,i)=>ORD[d]=i);
+function scopeEN(){
+  const sp={ALL:"All specimens",Urine:"Urine (UTI)",Blood:"Blood (BSI)",Sputum:"Sputum (Pneumonia)"}[curSpec];
+  const og={ALL:"All patients",CAI:"Community (CAI)",HAI:"Hospital (HAI)"}[curOrigin];
+  const wd={ALL:"All wards",MICU:"Medical ICU (MICU)",SICU:"Surgical ICU (SICU)"}[curWard];
+  return `${sp} · ${og} · ${wd}`;
+}
+function generateAnnualPDF(){
+  if(!(window.jspdf&&window.jspdf.jsPDF)){ alert("กำลังโหลดไลบรารี PDF ลองใหม่อีกครั้ง"); return; }
+  const key=stratKey(), year=curYear, orgs=orgsFor(key);
+  const seen=new Set(), drugs=[];
+  orgs.forEach(o=>Object.keys(DATA.organisms[o].strata[key].drugs).forEach(d=>{if(!seen.has(d)){seen.add(d);drugs.push(d);}}));
+  drugs.sort((a,b)=>(ORD[a]??99)-(ORD[b]??99));
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+  // ใส่โลโก้ รพ. ที่หัวกระดาษ (วาดจาก <img> ที่โหลดแล้ว -> dataURL)
+  let hasLogo=false;
+  try{
+    const img=document.getElementById('hospLogo');
+    if(img && img.naturalWidth){
+      const cv=document.createElement('canvas'); cv.width=img.naturalWidth; cv.height=img.naturalHeight;
+      cv.getContext('2d').drawImage(img,0,0);
+      doc.addImage(cv.toDataURL('image/png'),'PNG',14,8,17,17); hasLogo=true;
+    }
+  }catch(e){}
+  const tx=hasLogo?35:14;
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(20,40,55);
+  doc.text(`Cumulative Antibiogram ${year} — Lerdsin Hospital`,tx,hasLogo?15:13);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(90);
+  doc.text(`${scopeEN()}   ·   %S — first isolate/patient (CLSI M39), reported when N>=30`,tx,hasLogo?21:19);
+  const startY=hasLogo?29:23;
+  const head=[["Organism","N",...drugs.map(d=>ABBR[d]||d)]];
+  const body=orgs.map(o=>{
+    const s=DATA.organisms[o].strata[key], row=[o,String(s.N[year]??"")];
+    drugs.forEach(d=>{ const c=s.drugs[d]&&s.drugs[d][year]; row.push(c?String(c.S):"—"); });
+    return row;
+  });
+  doc.autoTable({head,body,startY,theme:"grid",
+    styles:{fontSize:6,cellPadding:1,halign:"center",lineColor:[210,210,210],lineWidth:.1},
+    headStyles:{fillColor:[22,137,196],textColor:255,fontSize:6,halign:"center"},
+    columnStyles:{0:{halign:"left",cellWidth:44},1:{cellWidth:9}},
+    didParseCell:function(t){ if(t.section==="body"&&t.column.index>=2){ const v=parseInt(t.cell.raw,10);
+      if(!isNaN(v)) t.cell.styles.fillColor = v>=80?[209,240,222]:v>=60?[255,243,205]:[250,219,219]; } }
+  });
+  let fy=doc.lastAutoTable.finalY+5; doc.setFontSize(5.5); doc.setTextColor(120);
+  const leg="Antibiotics: "+drugs.map(d=>`${ABBR[d]||d}=${d}`).join("   ");
+  doc.text(doc.splitTextToSize(leg,268),14,fy);
+  fy+=doc.splitTextToSize(leg,268).length*2.6+3;
+  doc.text("Color: green %S>=80  yellow 60-79  red <60",14,fy);
+  doc.save(`Antibiogram_${year}_${curSpec}-${curOrigin}-${curWard}.pdf`);
+}
+document.getElementById('dlBtn').onclick=()=>{ try{generateAnnualPDF();}catch(e){alert("สร้าง PDF ไม่สำเร็จ: "+e.message);} };
+
+/* ---- ตัวนับผู้ใช้งาน (เรียก Cloudflare Pages Function /api/hit) ---- */
+async function hitCounter(){
+  let cid; try{ cid=localStorage.getItem('ab_cid'); if(!cid){cid=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem('ab_cid',cid);} }catch(e){ cid=Math.random().toString(36).slice(2); }
+  try{
+    const r=await fetch('/api/hit',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({cid})});
+    if(!r.ok) return;
+    const j=await r.json(); const el=document.getElementById('visitors');
+    el.textContent=`👥 ผู้ใช้งาน ${Number(j.users||0).toLocaleString()} คน · เข้าชม ${Number(j.visits||0).toLocaleString()} ครั้ง`;
+    el.hidden=false;
+  }catch(e){/* ยังไม่ได้ deploy หรือเปิดไฟล์ตรงๆ — ซ่อนตัวนับไว้ */}
+}
+hitCounter();
+
+readHash();
+if(!curOrg || !orgsFor(stratKey()).includes(curOrg)) curOrg=orgsByN(stratKey())[0];
+refresh();
+</script>
