@@ -29,7 +29,9 @@ susceptibility:
   # การแปลงค่าผลดิบให้เป็น S / I / R (จับคู่แบบไม่สนตัวพิมพ์เล็ก-ใหญ่)
   susceptible_values: [S, SUSCEPTIBLE, SENSITIVE]
   intermediate_values: [I, INTERMEDIATE, SDD, "S-DD"]
-  resistant_values: [R, RESISTANT]
+  # MLAB DBF ใช้ "N" = ไม่ไว (NS/SDD) → นับเป็น "ไม่ไว" ในตัวหาร แต่ไม่ใช่ S
+  # (ตาม plan rolling antibiogram: %S = S/(S+I+R+N))
+  resistant_values: [R, RESISTANT, N, NS]
   # CLSI M39 รายงาน %S เท่านั้น -> ปกติไม่นับ I เป็น susceptible
   count_intermediate_as_susceptible: false
   # ยกเว้นยาเหล่านี้ให้คิด %I เป็น susceptible (เช่น Colistin ที่ CLSI เหลือแต่ I/R)
