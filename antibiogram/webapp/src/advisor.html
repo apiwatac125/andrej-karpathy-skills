@@ -96,6 +96,23 @@ select:focus-visible,input#org:focus-visible{outline:2px solid var(--brand);outl
 .intrinsic b{color:var(--fg);font-weight:700}
 .intrinsic .ir{display:inline-block;margin:3px 5px 0 0;padding:3px 9px;border-radius:999px;background:var(--surface2);
   border:1px solid var(--line);color:var(--muted);text-decoration:line-through;text-decoration-color:var(--sus-low)}
+.paired{margin-top:14px}
+.paired[hidden]{display:none}
+.paired-head{font-size:.86rem;color:var(--muted);margin:2px 0 10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.paired-head b{color:var(--fg)}
+.rollk{display:inline-flex;gap:5px;flex-wrap:wrap}
+.kbtn{font:inherit;font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;transition:.15s}
+.kbtn:hover{border-color:var(--brand)}
+.kbtn.on{background:var(--brand);color:#fff;border-color:transparent}
+.ptbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.ptbl{width:100%;border-collapse:collapse;font-size:.9rem;min-width:360px}
+.ptbl th,.ptbl td{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left}
+.ptbl th{font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--surface2);font-weight:700}
+.ptbl td.num{text-align:center;font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.ptbl td.num .sub{font-size:.68rem;font-weight:400;color:var(--muted);margin-top:1px}
+.ptbl tr:last-child td{border-bottom:none}
+.ptbl .d-dn{color:var(--sus-low)} .ptbl .d-up{color:var(--sus-high)} .ptbl .d-eq{color:var(--muted)}
+.paired-note{font-size:.76rem;color:var(--muted);margin-top:8px;font-style:italic}
 .pillrow{display:flex;gap:7px;flex-wrap:wrap}
 .pill{font:inherit;font-size:.85rem;padding:8px 14px;border-radius:8px;border:1px solid var(--line-strong);
   background:var(--surface2);color:var(--muted);cursor:pointer;white-space:nowrap}
@@ -219,6 +236,8 @@ footer{color:var(--muted);font-size:.74rem;margin-top:30px;padding-top:18px;bord
         <p class="note" id="rankNote"></p>
         <div class="rank" id="rankList"></div>
         <button class="morebtn" id="moreBtn" type="button" hidden>ดูยาทั้งหมด ▾</button>
+        <button class="morebtn" id="rollBtn" type="button">⇄ เทียบรายปี vs สะสมย้อนหลัง</button>
+        <div class="paired" id="pairedWrap" hidden></div>
         <div class="intrinsic" id="intrinsic"></div>
       </div>
       <div class="card">
@@ -266,6 +285,7 @@ const ORIGIN_LABEL = {"ALL":"ทั้งหมด","CAI":"ชุมชน (CAI)
 const WARD_LABEL = {}; DATA.meta.wards.forEach(w=>WARD_LABEL[w.key]=w.label);
 let curOrg=null, curYear=years[years.length-1], curOrigin="ALL", curSpec="ALL", curWard="ALL", showAll=false;
 let trendSel=null, trendActive=[];  /* trendSel: null=auto-pick, else Set of chosen drug names (persists across organisms) */
+let showRoll=false, rollK=3;  /* ตารางคู่ รายปี vs สะสมย้อนหลัง rollK ปี */
 
 const orgSel=document.getElementById('org');
 const orgList=document.getElementById('orgList');
@@ -328,6 +348,36 @@ function renderCommonOrgs(){
     + list.map(o=>`<button type="button" class="ochip${o===curOrg?' on':''}" onclick="pickOrg('${o.replace(/'/g,"\\'")}')">${o}</button>`).join('');
 }
 function pickOrg(o){ curOrg=o; orgSel.value=o; showAll=false; render(); }
+
+/* ---- ตารางคู่: รายปี vs rolling (สะสมย้อนหลัง rollK ปี, pooled count) ---- */
+function pooledRolling(drugs, name, endY, K){
+  let sumN=0, sumS=0;
+  for(let y=endY-K+1; y<=endY; y++){ const c=drugs[name] && drugs[name][String(y)];
+    if(c && c.n){ sumN+=c.n; sumS+=Math.round(c.S/100*c.n); } }
+  return sumN>=30 ? {S:Math.round(100*sumS/sumN), n:sumN} : null;
+}
+function renderPaired(){
+  const w=document.getElementById('pairedWrap'), btn=document.getElementById('rollBtn');
+  if(!showRoll){ w.hidden=true; btn.textContent='⇄ เทียบรายปี vs สะสมย้อนหลัง'; return; }
+  btn.textContent='⇄ ซ่อนตารางเทียบ ▴'; w.hidden=false;
+  const key=stratKey(), d=DATA.organisms[curOrg].strata[key].drugs, endY=parseInt(curYear,10);
+  const rows=drugsFor(curOrg,key,curYear).sort((a,b)=>b.s-a.s);
+  const body=rows.map(x=>{
+    const rl=pooledRolling(d,x.name,endY,rollK), delta=rl?rl.S-x.s:null;
+    const dtxt=delta==null?'–':(delta>0?`+${delta}`:`${delta}`);
+    const dcls=delta==null?'':(delta<=-5?'d-dn':(delta>=5?'d-up':'d-eq'));
+    return `<tr><td>${x.name}</td>`
+      +`<td class="num">${x.s}%<div class="sub">N=${x.n}</div></td>`
+      +`<td class="num">${rl?rl.S+'%':'–'}<div class="sub">${rl?'N='+rl.n:'N&lt;30'}</div></td>`
+      +`<td class="num ${dcls}">${dtxt}</td></tr>`;
+  }).join('');
+  const N=DATA.organisms[curOrg].strata[key].N; let poolN=0;
+  for(let y=endY-rollK+1;y<=endY;y++){ if(N[String(y)]) poolN+=N[String(y)]; }
+  w.innerHTML=`<div class="paired-head">เทียบ <b>ปี ${endY}</b> กับ <b>สะสมย้อนหลัง ${rollK} ปี</b> (${endY-rollK+1}–${endY}) · N สะสม = ${poolN}
+      <span class="rollk">${[2,3,4,5].map(k=>`<button type="button" class="kbtn${k===rollK?' on':''}" onclick="rollK=${k};renderPaired();">${k} ปี</button>`).join('')}</span></div>
+    <div class="ptbl-wrap"><table class="ptbl"><thead><tr><th>ยา</th><th>รายปี ${endY}</th><th>สะสม ${rollK} ปี</th><th>Δ</th></tr></thead><tbody>${body}</tbody></table></div>
+    <p class="paired-note">สะสมย้อนหลัง = รวมจำนวนเชื้อข้ามปีแล้วคิด %S ใหม่ (pooled) · Δ = สะสม − รายปี · ค่าติดลบ (แดง) = ไวลดลง/ดื้อเพิ่ม · รายงานเฉพาะ N≥30</p>`;
+}
 
 /* ---- จดจำสถานะผ่าน URL (บุ๊กมาร์ก/แชร์มุมมองได้) ---- */
 function writeHash(){
@@ -411,6 +461,7 @@ function render(){
     : '';
 
   renderCommonOrgs();
+  renderPaired();
   renderTrend(key);
   writeHash();
 }
@@ -500,6 +551,7 @@ orgSel.onchange=()=>{
   curOrg=v; orgSel.value=v||''; showAll=false; render();
 };
 document.getElementById('moreBtn').onclick=()=>{showAll=!showAll;render();};
+document.getElementById('rollBtn').onclick=()=>{showRoll=!showRoll;renderPaired();};
 
 const root=document.documentElement, tb=document.getElementById('themeBtn');
 tb.onclick=()=>{const cur=root.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
