@@ -43,6 +43,12 @@ def main():
     ap.add_argument("--profile", default=str(HERE / "config" / "mlab_profile.json"))
     ap.add_argument("--out", default="out")
     ap.add_argument("--split", action="store_true", help="ออกไฟล์แยก ALL/CAI/HAI")
+    ap.add_argument("--paired", action="store_true",
+                    help="ออกตารางคู่ รายปี + rolling (ย้อนหลัง N เดือน) + แผ่นเทียบ Δ")
+    ap.add_argument("--rolling-months", type=int, default=12,
+                    help="ความยาวหน้าต่าง rolling หน่วยเดือน (ปริยาย 12)")
+    ap.add_argument("--as-of", default=None,
+                    help="วันปลายหน้าต่าง rolling เช่น 2026-06-30 (ปริยาย = วันล่าสุดในข้อมูล)")
     args = ap.parse_args()
 
     profile = json.loads(Path(args.profile).read_text(encoding="utf-8"))
@@ -65,6 +71,24 @@ def main():
     scopes = [("ALL", ["CAI", "HAI"])]
     if args.split and his is not None:
         scopes += [("CAI", ["CAI"]), ("HAI", ["HAI"])]
+
+    if args.paired:
+        # เตรียมข้อมูลครั้งเดียว แล้วตัดหน้าต่าง รายปี/rolling บน std เดียวกัน
+        from ab import rolling
+        std, steps = pipeline.prepare(micro, profile["col_map"], profile["ab_cols"],
+                                      conditions, his_df=his, **his_kw)
+        for label, origins in scopes:
+            t = time.time()
+            kw = dict(origins=origins)
+            ann = rolling.annual(std, profile["ab_cols"], conditions, **kw)
+            rol = rolling.rolling(std, profile["ab_cols"], conditions,
+                                  end=args.as_of, months=args.rolling_months, **kw)
+            data = export.to_paired_excel(ann, rol, scope=f"All specimen & ward - {label}")
+            fp = out_dir / f"antibiogram_paired_{label}.xlsx"
+            fp.write_bytes(data)
+            print(f"[{label}] annual={ann.window['label']} rolling={rol.window['label']} "
+                  f"-> {fp}  ({time.time()-t:.1f}s)")
+        return
 
     for label, origins in scopes:
         t = time.time()

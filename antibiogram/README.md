@@ -40,8 +40,20 @@ antibiogram/
 ## การใช้งาน
 ```bash
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run app.py                                   # หน้าจอ
+python cli.py --micro ATB.xlsx --his HIS.csv --split   # ออกไฟล์ ALL/CAI/HAI
+
+# ตารางคู่ "รายปี + rolling" (ย้อนหลัง 12 เดือน) + แผ่นเทียบ Δ ในไฟล์เดียว
+python cli.py --micro ATB.xlsx --his HIS.csv --split --paired \
+             --rolling-months 12 --as-of 2026-06-30
 ```
+
+### Rolling antibiogram (หน้าต่างเลื่อน)
+`ab/rolling.py` คิด %S จากหน้าต่างเวลาบน `collect_datetime` ด้วย pipeline เดิม
+(dedup first-isolate, เกณฑ์ N≥30) — `annual()` = ปีปฏิทิน, `rolling()` = ย้อนหลัง N เดือน,
+`compare()` = Δ รายคู่ (เชื้อ×ยา). `--paired` ออก Excel 3 แผ่น Annual · Rolling · Compare
+(แถวที่ไวลดลง ≥10 จุดไฮไลต์แดง เพื่อเฝ้าระวังการดื้อยาที่เปลี่ยนเร็วกว่าตารางรายปี)
+เทสต์: `python tests/test_rolling.py`
 
 ## สิ่งที่จะยืนยันหลังได้ไฟล์จริง
 - รูปแบบวันที่/เวลา (มีเวลาด้วยไหม เพื่อคำนวณ 48 ชม. แม่นยำ)
