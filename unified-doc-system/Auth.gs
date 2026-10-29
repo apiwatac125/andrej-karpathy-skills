@@ -18,6 +18,16 @@ var SESSION_EXPIRED = 'หมดเวลาใช้งาน กรุณา�
  */
 function setup() {
   var props = PropertiesService.getScriptProperties();
+  // LocalProps.gs = ค่า URL/id ของระบบอื่นที่ใส่มาตอน deploy ไม่เก็บใน git เพราะ repo นี้เปิดสาธารณะ
+  // เติมเฉพาะ Script Property ที่ยังว่าง — แก้ทีหลังได้ที่ Project Settings › Script Properties
+  if (typeof LOCAL_PROPS !== 'undefined') {
+    Object.keys(LOCAL_PROPS).forEach(function (k) {
+      if (!props.getProperty(k)) {
+        props.setProperty(k, LOCAL_PROPS[k]);
+        Logger.log('ตั้ง Script Property ' + k);
+      }
+    });
+  }
   var id = props.getProperty('DB_SHEET_ID');
   var ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.create('ระบบงานเอกสาร — ผู้ใช้และสิทธิ์');
   props.setProperty('DB_SHEET_ID', ss.getId());

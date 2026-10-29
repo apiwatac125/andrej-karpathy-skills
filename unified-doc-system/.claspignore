@@ -1,0 +1,10 @@
+# push ขึ้น Apps Script เฉพาะไฟล์ของระบบ
+**/**
+!Config.gs
+!Auth.gs
+!Code.gs
+!Search.gs
+!LocalProps.gs
+!Index.html
+!Styles.html
+!appsscript.json

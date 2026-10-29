@@ -31,7 +31,7 @@
 
 1. สร้างโปรเจกต์ใหม่ที่ <https://script.google.com> แล้วคัดลอกไฟล์ `.gs` และ `.html` ทั้งหมดเข้าไป
    (ชื่อไฟล์ต้องตรง: `Index`, `Styles`) และเปิด Project Settings › Show "appsscript.json" แล้ววางเนื้อหาจากไฟล์นี้
-   — หรือใช้ [`clasp push`](https://github.com/google/clasp) จากโฟลเดอร์นี้
+   — หรือใช้ clasp ตามหัวข้อ "Deploy ด้วย clasp" ด้านล่าง (โปรเจกต์ของกลุ่มงานสร้างไว้แล้ว)
 2. เลือกฟังก์ชัน `setup` แล้วกด Run (อนุญาตสิทธิ์ครั้งแรก) — ระบบสร้างสเปรดชีต
    "ระบบงานเอกสาร — ผู้ใช้และสิทธิ์" และบัญชี `admin` ระดับหัวหน้ากลุ่มงาน
    **รหัสผ่านชั่วคราวอยู่ใน Execution log**
@@ -42,9 +42,33 @@
 
    | Property | ค่า |
    |---|---|
-   | `SPMT07_APP_URL` | URL เว็บแอป SP-MT-07 (production): `https://script.google.com/macros/s/AKfycbypFJSKOvNHquwPaE-XNIYA5-mDidwHQaeEOAMT2LjO9JUcxoGTDiQze271RdevKhRVsw/exec` |
+   | `SPMT07_APP_URL` | URL เว็บแอป SP-MT-07 production (deploymentId อยู่ใน CLAUDE.md ของ repo `spmt07-webapp`) |
    | `SPMT07_SHEET_ID` | id สเปรดชีต "SP-MT-07 Selection Submissions" (ส่วนยาวใน URL ของชีต ระหว่าง `/d/` กับ `/edit`) — ใช้กับแชทบอท |
    | `WI_APP_URL` | URL เว็บแอประบบ WI (ลงท้าย `/exec`) |
+
+   ค่าเหล่านี้ไม่เขียนไว้ใน repo เพราะ repo นี้เปิดสาธารณะ — URL ระบบจริงของโรงพยาบาลไม่ควรอยู่ที่สาธารณะ
+   ถ้ามีไฟล์ `LocalProps.gs` (ดูหัวข้อ Deploy ด้วย clasp) `setup()` จะเติมให้เองเฉพาะตัวที่ยังว่าง
+
+## Deploy ด้วย clasp
+
+`.clasp.json` ในโฟลเดอร์นี้ชี้ไปที่โปรเจกต์ Apps Script "ระบบงานเอกสาร" ของกลุ่มงาน และ `.claspignore`
+push ขึ้นไปเฉพาะไฟล์ของระบบ (ไม่เอา README / preview)
+
+```bash
+clasp push
+clasp list-deployments          # ดู deploymentId ของตัว production
+clasp deploy --deploymentId <deploymentId> --description "..."
+```
+
+`clasp push` อย่างเดียวลิงก์ production ยังใช้โค้ดเดิม ต้อง `clasp deploy --deploymentId` ทุกครั้ง
+
+`LocalProps.gs` (อยู่ใน `.gitignore`) ใช้ส่งค่า Script Properties ขึ้นไปพร้อมโค้ดโดยไม่ต้องพิมพ์เองในหน้า Project Settings:
+
+```js
+var LOCAL_PROPS = { SPMT07_APP_URL: 'https://script.google.com/macros/s/…/exec', SPMT07_SHEET_ID: '…' };
+```
+
+push แล้วรัน `setup()` หนึ่งครั้ง ค่าจะถูกคัดลอกลง Script Properties — push ครั้งหลังที่ไม่มีไฟล์นี้ก็ไม่เป็นไร
 
 ## ระดับสิทธิ์
 
@@ -96,13 +120,9 @@
 | คลังเอกสาร | `?page=archive` |
 | ดรอปดาวน์รายชื่อบริษัท | `?page=formtools` |
 
-ต้องทำ 2 อย่าง:
-
-1. **deploy SP-MT-07 ฉบับที่รองรับ `?embed=1`** — branch `claude/unified-document-system-bjv1s4` ของ
-   `spmt07-webapp` แก้ให้หน้าเหล่านี้แสดงในกรอบได้ และซ่อนลิงก์ไปหน้าอื่นของ SP-MT-07 (ใช้เมนูซ้ายแทน)
-   ลิงก์ Google Form ยังอยู่ เปิดตรงไม่มี `?embed=1` เหมือนเดิมทุกอย่าง merge แล้วรันในโฟลเดอร์ SP-MT-07:
-   `clasp push` แล้ว `clasp deploy --deploymentId AKfycbypFJSKOvNHquwPaE-XNIYA5-mDidwHQaeEOAMT2LjO9JUcxoGTDiQze271RdevKhRVsw`
-2. ตั้ง `SPMT07_APP_URL` และ `SPMT07_SHEET_ID` ตามตารางในหัวข้อติดตั้ง
+SP-MT-07 ตั้งแต่ version 28 (deploy 2026-10-29) รองรับ `?embed=1` แล้ว: หน้าเหล่านี้แสดงในกรอบได้
+และซ่อนลิงก์ไปหน้าอื่นของ SP-MT-07 (ใช้เมนูซ้ายแทน) ลิงก์ Google Form ยังอยู่ เปิดตรงไม่มี `?embed=1`
+เหมือนเดิมทุกอย่าง — ฝั่งนี้เหลือแค่ตั้ง `SPMT07_APP_URL` และ `SPMT07_SHEET_ID` ตามตารางในหัวข้อติดตั้ง
 
 ข้อควรรู้:
 
