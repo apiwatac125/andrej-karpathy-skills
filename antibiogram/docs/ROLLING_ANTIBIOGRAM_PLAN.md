@@ -39,6 +39,7 @@
 ## สถาปัตยกรรม
 - **Part A — `lab-daily-report/antibiogram_etl.py`** (รันในเครื่อง, PHI ไม่ออก): อ่าน DBF (Python ล้วน ~20 บรรทัด, ไม่เพิ่ม dependency), ใช้ `amr_dictionary.json`+`config.json`+gspread เดิม → output **ตัวเลขสรุป (ไม่มี HN)** ลง Google Sheet tab `Antibiogram`: `period, stratum_type, stratum, organism, drug, n_tested, n_s, pct_s, lt30, intrinsic`. รัน backfill (1 ม.ค. 2568–ปัจจุบัน) แล้วตั้ง Task Scheduler รายวันบน patho13
 - **Part B — card ใหม่ใน `amr-live-dashboard.html`**: "🧫 Cumulative Antibiogram" โหลด tab ด้วย gviz JSONP, ตัวเลือกช่วง/กลุ่มของ card เอง, heatmap เชื้อ×ยา (%S+(N) แถบสี ≥90/80–89/70–79/51–69/≤50, "R"=intrinsic, เทา+"N<30"), คลิกช่อง → กราฟเส้น %S ย้อนหลังทุกปี (Chart.js)
+  - **ตัวอย่างหน้าตา (mockup):** [`mockups/cumulative-antibiogram-paired.html`](mockups/) · live <https://claude.ai/artifact/6SD5q1oEoeF8yTeh3XyxNF>
 
 ## Verification (ทำเมื่อ un-park)
 เทียบ **Antibiogram Lerdsin 2025.xlsx** (ต้อง export DBF 1 ม.ค.–31 ธ.ค. 2568): All/Hemoculture/Sputum/Urine/MICU — N ใกล้เคียง, %S ต่าง ≤ ±2 จุด. ตัวเลขอ้างอิง:

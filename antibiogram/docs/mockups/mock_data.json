@@ -1,0 +1,1008 @@
+{
+"drugs": [
+"Ampicillin",
+"Amoxicillin/Cla",
+"Ampicillin/Sulb",
+"Piperacillin/Tazobactam",
+"Ceftriaxone",
+"Ceftazidime",
+"Cefepime",
+"Ertapenem",
+"Meropenem",
+"Imipenem",
+"Amikacin",
+"Gentamicin",
+"Ciprofloxacin",
+"Trimethoprim/Sulfa",
+"Colistin",
+"Vancomycin"
+],
+"rows": [
+{
+"org": "Escherichia coli",
+"N_annual": 1101,
+"intr": [],
+"cells": {
+"Ampicillin": {
+"annual": [
+17,
+1097
+],
+"roll": [
+17,
+2148
+]
+},
+"Amoxicillin/Cla": {
+"annual": [
+74,
+1091
+],
+"roll": [
+76,
+2140
+]
+},
+"Ampicillin/Sulb": {
+"annual": [
+96,
+1097
+],
+"roll": [
+72,
+2149
+]
+},
+"Piperacillin/Tazobactam": {
+"annual": [
+85,
+1101
+],
+"roll": [
+86,
+2153
+]
+},
+"Ceftriaxone": {
+"annual": [
+53,
+1101
+],
+"roll": [
+54,
+2153
+]
+},
+"Ceftazidime": {
+"annual": [
+68,
+1101
+],
+"roll": [
+70,
+2153
+]
+},
+"Cefepime": {
+"annual": [
+65,
+1101
+],
+"roll": [
+66,
+2153
+]
+},
+"Ertapenem": {
+"annual": [
+95,
+1101
+],
+"roll": [
+95,
+2153
+]
+},
+"Meropenem": {
+"annual": [
+96,
+1101
+],
+"roll": [
+96,
+2153
+]
+},
+"Imipenem": {
+"annual": [
+97,
+1101
+],
+"roll": [
+97,
+2153
+]
+},
+"Amikacin": {
+"annual": [
+97,
+1101
+],
+"roll": [
+97,
+2155
+]
+},
+"Gentamicin": {
+"annual": [
+72,
+1099
+],
+"roll": [
+72,
+2147
+]
+},
+"Ciprofloxacin": {
+"annual": [
+34,
+1101
+],
+"roll": [
+35,
+2153
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 2155
+},
+{
+"org": "Klebsiella pneumoniae",
+"N_annual": 927,
+"intr": [
+"Ampicillin"
+],
+"cells": {
+"Ampicillin": {
+"annual": "R",
+"roll": "R"
+},
+"Amoxicillin/Cla": {
+"annual": [
+60,
+920
+],
+"roll": [
+61,
+1922
+]
+},
+"Ampicillin/Sulb": {
+"annual": [
+50,
+924
+],
+"roll": [
+48,
+1930
+]
+},
+"Piperacillin/Tazobactam": {
+"annual": [
+61,
+927
+],
+"roll": [
+61,
+1937
+]
+},
+"Ceftriaxone": {
+"annual": [
+56,
+927
+],
+"roll": [
+55,
+1936
+]
+},
+"Ceftazidime": {
+"annual": [
+60,
+927
+],
+"roll": [
+58,
+1937
+]
+},
+"Cefepime": {
+"annual": [
+63,
+927
+],
+"roll": [
+60,
+1937
+]
+},
+"Ertapenem": {
+"annual": [
+70,
+927
+],
+"roll": [
+71,
+1936
+]
+},
+"Meropenem": {
+"annual": [
+82,
+927
+],
+"roll": [
+80,
+1937
+]
+},
+"Imipenem": {
+"annual": [
+82,
+927
+],
+"roll": [
+81,
+1937
+]
+},
+"Amikacin": {
+"annual": [
+86,
+927
+],
+"roll": [
+84,
+1937
+]
+},
+"Gentamicin": {
+"annual": [
+79,
+920
+],
+"roll": [
+76,
+1927
+]
+},
+"Ciprofloxacin": {
+"annual": [
+57,
+927
+],
+"roll": [
+52,
+1937
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 1938
+},
+{
+"org": "Pseudomonas aeruginosa",
+"N_annual": 641,
+"intr": [
+"Amoxicillin/Cla",
+"Ampicillin",
+"Ampicillin/Sulb"
+],
+"cells": {
+"Ampicillin": {
+"annual": "R",
+"roll": "R"
+},
+"Amoxicillin/Cla": {
+"annual": "R",
+"roll": "R"
+},
+"Ampicillin/Sulb": {
+"annual": "R",
+"roll": "R"
+},
+"Piperacillin/Tazobactam": {
+"annual": [
+78,
+641
+],
+"roll": [
+77,
+1323
+]
+},
+"Ceftriaxone": {
+"annual": null,
+"roll": null
+},
+"Ceftazidime": {
+"annual": [
+78,
+641
+],
+"roll": [
+78,
+1325
+]
+},
+"Cefepime": {
+"annual": [
+80,
+641
+],
+"roll": [
+79,
+1325
+]
+},
+"Ertapenem": {
+"annual": null,
+"roll": null
+},
+"Meropenem": {
+"annual": [
+75,
+641
+],
+"roll": [
+76,
+1325
+]
+},
+"Imipenem": {
+"annual": [
+73,
+641
+],
+"roll": [
+74,
+1325
+]
+},
+"Amikacin": {
+"annual": [
+88,
+638
+],
+"roll": [
+87,
+1320
+]
+},
+"Gentamicin": {
+"annual": null,
+"roll": null
+},
+"Ciprofloxacin": {
+"annual": [
+76,
+641
+],
+"roll": [
+77,
+1325
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 1326
+},
+{
+"org": "Acinetobacter baumannii",
+"N_annual": 517,
+"intr": [],
+"cells": {
+"Ampicillin": {
+"annual": null,
+"roll": null
+},
+"Amoxicillin/Cla": {
+"annual": null,
+"roll": null
+},
+"Ampicillin/Sulb": {
+"annual": [
+16,
+513
+],
+"roll": [
+18,
+1105
+]
+},
+"Piperacillin/Tazobactam": {
+"annual": [
+17,
+517
+],
+"roll": [
+19,
+1110
+]
+},
+"Ceftriaxone": {
+"annual": [
+17,
+517
+],
+"roll": [
+17,
+517
+]
+},
+"Ceftazidime": {
+"annual": [
+19,
+517
+],
+"roll": [
+20,
+1110
+]
+},
+"Cefepime": {
+"annual": [
+18,
+517
+],
+"roll": [
+19,
+1110
+]
+},
+"Ertapenem": {
+"annual": null,
+"roll": null
+},
+"Meropenem": {
+"annual": [
+18,
+517
+],
+"roll": [
+19,
+1110
+]
+},
+"Imipenem": {
+"annual": [
+18,
+517
+],
+"roll": [
+19,
+1110
+]
+},
+"Amikacin": {
+"annual": [
+28,
+517
+],
+"roll": [
+32,
+1110
+]
+},
+"Gentamicin": {
+"annual": [
+22,
+516
+],
+"roll": [
+27,
+1109
+]
+},
+"Ciprofloxacin": {
+"annual": [
+17,
+517
+],
+"roll": [
+19,
+1110
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 1113
+},
+{
+"org": "Proteus mirabilis",
+"N_annual": 243,
+"intr": [],
+"cells": {
+"Ampicillin": {
+"annual": [
+45,
+240
+],
+"roll": [
+45,
+484
+]
+},
+"Amoxicillin/Cla": {
+"annual": [
+89,
+242
+],
+"roll": [
+90,
+487
+]
+},
+"Ampicillin/Sulb": {
+"annual": [
+77,
+242
+],
+"roll": [
+76,
+487
+]
+},
+"Piperacillin/Tazobactam": {
+"annual": [
+98,
+243
+],
+"roll": [
+98,
+488
+]
+},
+"Ceftriaxone": {
+"annual": [
+81,
+243
+],
+"roll": [
+78,
+488
+]
+},
+"Ceftazidime": {
+"annual": [
+96,
+243
+],
+"roll": [
+94,
+488
+]
+},
+"Cefepime": {
+"annual": [
+90,
+243
+],
+"roll": [
+89,
+488
+]
+},
+"Ertapenem": {
+"annual": [
+99,
+243
+],
+"roll": [
+100,
+488
+]
+},
+"Meropenem": {
+"annual": [
+99,
+243
+],
+"roll": [
+98,
+488
+]
+},
+"Imipenem": {
+"annual": [
+89,
+242
+],
+"roll": [
+87,
+487
+]
+},
+"Amikacin": {
+"annual": [
+99,
+243
+],
+"roll": [
+99,
+488
+]
+},
+"Gentamicin": {
+"annual": [
+69,
+243
+],
+"roll": [
+69,
+488
+]
+},
+"Ciprofloxacin": {
+"annual": [
+56,
+243
+],
+"roll": [
+56,
+488
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 488
+},
+{
+"org": "Salmonella species",
+"N_annual": null,
+"intr": [],
+"cells": {
+"Ampicillin": {
+"annual": null,
+"roll": [
+59,
+37
+]
+},
+"Amoxicillin/Cla": {
+"annual": null,
+"roll": [
+84,
+37
+]
+},
+"Ampicillin/Sulb": {
+"annual": null,
+"roll": [
+64,
+36
+]
+},
+"Piperacillin/Tazobactam": {
+"annual": null,
+"roll": [
+89,
+37
+]
+},
+"Ceftriaxone": {
+"annual": null,
+"roll": [
+76,
+37
+]
+},
+"Ceftazidime": {
+"annual": null,
+"roll": [
+86,
+37
+]
+},
+"Cefepime": {
+"annual": null,
+"roll": [
+76,
+37
+]
+},
+"Ertapenem": {
+"annual": null,
+"roll": [
+92,
+37
+]
+},
+"Meropenem": {
+"annual": null,
+"roll": [
+95,
+37
+]
+},
+"Imipenem": {
+"annual": null,
+"roll": [
+97,
+37
+]
+},
+"Amikacin": {
+"annual": null,
+"roll": [
+100,
+37
+]
+},
+"Gentamicin": {
+"annual": null,
+"roll": [
+84,
+37
+]
+},
+"Ciprofloxacin": {
+"annual": null,
+"roll": [
+59,
+37
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 37
+},
+{
+"org": "Staphylococcus aureus",
+"N_annual": 386,
+"intr": [],
+"cells": {
+"Ampicillin": {
+"annual": null,
+"roll": null
+},
+"Amoxicillin/Cla": {
+"annual": null,
+"roll": null
+},
+"Ampicillin/Sulb": {
+"annual": null,
+"roll": null
+},
+"Piperacillin/Tazobactam": {
+"annual": null,
+"roll": null
+},
+"Ceftriaxone": {
+"annual": null,
+"roll": null
+},
+"Ceftazidime": {
+"annual": null,
+"roll": null
+},
+"Cefepime": {
+"annual": null,
+"roll": null
+},
+"Ertapenem": {
+"annual": null,
+"roll": null
+},
+"Meropenem": {
+"annual": null,
+"roll": null
+},
+"Imipenem": {
+"annual": null,
+"roll": null
+},
+"Amikacin": {
+"annual": null,
+"roll": null
+},
+"Gentamicin": {
+"annual": [
+94,
+374
+],
+"roll": [
+92,
+810
+]
+},
+"Ciprofloxacin": {
+"annual": [
+73,
+374
+],
+"roll": [
+74,
+810
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 829
+},
+{
+"org": "Enterococcus faecium",
+"N_annual": 194,
+"intr": [
+"Amikacin",
+"Cefepime",
+"Ceftazidime",
+"Ceftriaxone"
+],
+"cells": {
+"Ampicillin": {
+"annual": [
+11,
+194
+],
+"roll": [
+17,
+389
+]
+},
+"Amoxicillin/Cla": {
+"annual": null,
+"roll": null
+},
+"Ampicillin/Sulb": {
+"annual": null,
+"roll": null
+},
+"Piperacillin/Tazobactam": {
+"annual": null,
+"roll": null
+},
+"Ceftriaxone": {
+"annual": "R",
+"roll": "R"
+},
+"Ceftazidime": {
+"annual": "R",
+"roll": "R"
+},
+"Cefepime": {
+"annual": "R",
+"roll": "R"
+},
+"Ertapenem": {
+"annual": null,
+"roll": null
+},
+"Meropenem": {
+"annual": null,
+"roll": null
+},
+"Imipenem": {
+"annual": null,
+"roll": null
+},
+"Amikacin": {
+"annual": "R",
+"roll": "R"
+},
+"Gentamicin": {
+"annual": [
+84,
+192
+],
+"roll": [
+86,
+387
+]
+},
+"Ciprofloxacin": {
+"annual": [
+3,
+194
+],
+"roll": [
+5,
+389
+]
+},
+"Trimethoprim/Sulfa": {
+"annual": null,
+"roll": null
+},
+"Colistin": {
+"annual": null,
+"roll": null
+},
+"Vancomycin": {
+"annual": null,
+"roll": null
+}
+},
+"N_roll": 390
+}
+]
+}
