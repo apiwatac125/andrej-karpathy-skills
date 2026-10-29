@@ -16,13 +16,15 @@
  */
 
 var AB_SHEET = 'Antibiogram';
+var AB_SHEET_ID = '1LijjuAYdKmwqr2Daix-usN2FlZzMNbl62VPXMkCaSww';  // สเปรดชีตเดียวกับ ชีต1 lookup
 
 function abWrite_(data) {
-  // ตรวจ secret เหมือน action อื่น (ใช้ค่าเดียวกับ API_SECRET ใน config.py)
-  if (!data || data.secret !== _ab_secret_()) {
+  // ตรวจ secret เฉพาะเมื่อมีตั้งไว้ (ปัจจุบัน API_SECRET ว่าง -> ไม่บังคับ เหมือน action อื่น)
+  var expect = _ab_secret_();
+  if (expect && data && data.secret !== expect) {
     return _ab_json_({status: 'error', error: 'bad secret'});
   }
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(AB_SHEET_ID);
   var sh = ss.getSheetByName(AB_SHEET) || ss.insertSheet(AB_SHEET);
 
   var rows = data.rows || [];

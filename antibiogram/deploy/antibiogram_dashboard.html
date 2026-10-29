@@ -130,9 +130,8 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 </div>
 
 <script>
-// ─────────── config: Sheet ID จาก ?sheet=... หรือค่าฝังไว้ ───────────
-var SHEET_ID = new URLSearchParams(location.search).get('sheet') || "__SHEET_ID__";
-if (SHEET_ID === "__SHEET" + "_ID__") SHEET_ID = "";          // ยังไม่ได้ตั้ง -> ให้กรอกในหน้า
+// ─────────── config: Sheet ID จาก ?sheet=... หรือค่าฝังไว้ (สเปรดชีตเดียวกับ ชีต1) ───────────
+var SHEET_ID = new URLSearchParams(location.search).get('sheet') || "1LijjuAYdKmwqr2Daix-usN2FlZzMNbl62VPXMkCaSww";
 var TAB = new URLSearchParams(location.search).get('tab') || "Antibiogram";
 
 // ย่อชื่อยา (เต็ม -> ย่อ) + ลำดับการแสดง (เรียงเชิงคลินิก)

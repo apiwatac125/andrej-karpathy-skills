@@ -188,9 +188,9 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
     periods = summary["period"].nunique()
     print(f"สรุป {len(summary):,} แถว · {periods} ช่วง · {summary['stratum'].nunique()} กลุ่ม -> {out}")
 
-    if gas_url and gas_secret:
+    if gas_url:
         try:
-            n = push_to_gas(summary, gas_url, gas_secret)
+            n = push_to_gas(summary, gas_url, gas_secret or "")
             print(f"ส่งขึ้น Google Sheet ผ่าน GAS (tab 'Antibiogram') {n:,} แถว")
         except Exception as e:
             print(f"ส่ง GAS ไม่สำเร็จ: {e}", file=sys.stderr)
