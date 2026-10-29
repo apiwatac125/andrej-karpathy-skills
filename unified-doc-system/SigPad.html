@@ -1,0 +1,128 @@
+<!-- Signature pad ที่ใช้ร่วมกันทั้งหน้าส่งเอกสารและหน้าลงนาม — include ผ่าน <?!= include('SigPad') ?> -->
+<script>
+  /**
+   * WiSig.mount(containerId) -> { isSigned(), dataUrl(), reset() }
+   * 2 ช่องทางเหมือน SP-MT-07: วาดบน canvas หรือแนบรูปไฟล์ (ย่อลงกรอบ 400x150 อัตโนมัติ)
+   * ค่าที่ได้เป็น data URL — server ตรวจ prefix + ความยาวซ้ำอีกชั้นเสมอ
+   */
+  var WiSig = (function () {
+    var seq = 0;
+
+    function mount(containerId) {
+      var id = 'sig' + (++seq);
+      var el = document.getElementById(containerId);
+      el.innerHTML =
+        '<div class="hint" style="margin-bottom:6px">' +
+        '<label style="display:inline-block;font-weight:400;margin-right:16px">' +
+        '<input type="radio" name="' + id + 'mode" value="draw" checked> วาดลายเซ็น</label>' +
+        '<label style="display:inline-block;font-weight:400">' +
+        '<input type="radio" name="' + id + 'mode" value="upload"> แนบรูปลายเซ็น</label>' +
+        '</div>' +
+        '<div class="hint" id="' + id + 'hint">เซ็นในกรอบด้านล่างด้วยเมาส์หรือนิ้ว</div>' +
+        '<div id="' + id + 'uploadWrap" style="display:none;margin-bottom:6px">' +
+        '<input type="file" id="' + id + 'file" accept="image/png,image/jpeg"></div>' +
+        '<canvas id="' + id + 'pad" width="400" height="150" ' +
+        'style="border:1px dashed var(--gray);border-radius:6px;background:#fff;' +
+        'touch-action:none;width:100%;max-width:400px;display:block"></canvas>' +
+        '<button type="button" class="ghost" id="' + id + 'clear" style="margin-top:6px">ล้างลายเซ็น</button>';
+
+      var canvas = document.getElementById(id + 'pad');
+      var ctx = canvas.getContext('2d');
+      var signed = false;
+      var mode = 'draw';
+      var drawing = false;
+
+      function reset() {
+        // พื้นขาวเสมอ กัน JPEG fallback (กรณีรูปถ่าย) กลายเป็นพื้นดำ
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#1a1a2e';
+        signed = false;
+      }
+      reset();
+
+      function pos(e) {
+        var r = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - r.left) * (canvas.width / r.width),
+          y: (e.clientY - r.top) * (canvas.height / r.height)
+        };
+      }
+      canvas.onpointerdown = function (e) {
+        if (mode !== 'draw') return;
+        e.preventDefault();
+        drawing = true;
+        signed = true;
+        var p = pos(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        canvas.setPointerCapture(e.pointerId);
+      };
+      canvas.onpointermove = function (e) {
+        if (!drawing) return;
+        var p = pos(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      };
+      canvas.onpointerup = canvas.onpointercancel = function () { drawing = false; };
+
+      var fileInput = document.getElementById(id + 'file');
+      document.getElementById(id + 'clear').onclick = function () {
+        reset();
+        fileInput.value = '';
+      };
+
+      var radios = document.querySelectorAll('input[name=' + id + 'mode]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].onchange = function () {
+          mode = this.value;
+          reset();
+          fileInput.value = '';
+          document.getElementById(id + 'uploadWrap').style.display = (mode === 'upload' ? 'block' : 'none');
+          document.getElementById(id + 'hint').textContent = (mode === 'upload')
+            ? 'เลือกไฟล์รูปลายเซ็น (PNG/JPG ไม่เกิน 5MB) — รูปจะถูกย่อลงกรอบด้านล่างอัตโนมัติ'
+            : 'เซ็นในกรอบด้านล่างด้วยเมาส์หรือนิ้ว';
+        };
+      }
+
+      fileInput.onchange = function () {
+        var input = this;
+        var file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('ไฟล์ใหญ่เกิน 5MB'); input.value = ''; return; }
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+          var img = new Image();
+          img.onload = function () {
+            reset();
+            var scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+            var w = img.width * scale, h = img.height * scale;
+            ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+            signed = true;
+          };
+          img.onerror = function () { alert('ไฟล์รูปไม่ถูกต้อง'); input.value = ''; };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      };
+
+      return {
+        isSigned: function () { return signed; },
+        reset: reset,
+        /** PNG ก่อน แล้ว fallback JPEG ถ้าเกินเพดาน 50k ตัวอักษรต่อเซลล์ของ Sheets */
+        dataUrl: function () {
+          var url = canvas.toDataURL('image/png');
+          if (url.length >= 45000) url = canvas.toDataURL('image/jpeg', 0.85);
+          return url;
+        }
+      };
+    }
+
+    return { mount: mount };
+  })();
+</script>

@@ -1,0 +1,380 @@
+<title>ผังขั้นตอนระบบคุณภาพ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Trirong:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #e6e8e3;
+    --paper: #f6f7f4;
+    --paper-2: #edefea;
+    --ink: #14181a;
+    --ink-2: #4c5358;
+    --ink-3: #818890;
+    --line: #c6cac2;
+    --line-2: #d9dcd5;
+    --pine: #1f4e46;
+    --pine-soft: #dde8e3;
+    --amber: #85580f;
+    --amber-soft: #f0e7d3;
+    --stamp: #9d2f27;
+    --stamp-soft: #f1e1de;
+    --ui: 'IBM Plex Sans Thai', 'Noto Sans Thai', system-ui, sans-serif;
+    --display: 'Trirong', 'Noto Serif Thai', Georgia, serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #15181a; --paper: #1d2124; --paper-2: #24282b;
+      --ink: #e3e5e0; --ink-2: #a5aca9; --ink-3: #79817f;
+      --line: #353b3d; --line-2: #2a2f31;
+      --pine: #78b3a4; --pine-soft: #1b2e2a;
+      --amber: #cf9f4d; --amber-soft: #2c2415;
+      --stamp: #dd8a81; --stamp-soft: #2f1a17;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #15181a; --paper: #1d2124; --paper-2: #24282b;
+    --ink: #e3e5e0; --ink-2: #a5aca9; --ink-3: #79817f;
+    --line: #353b3d; --line-2: #2a2f31;
+    --pine: #78b3a4; --pine-soft: #1b2e2a;
+    --amber: #cf9f4d; --amber-soft: #2c2415;
+    --stamp: #dd8a81; --stamp-soft: #2f1a17;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--ui); font-size: 16px; line-height: 1.6;
+  }
+  .shell { max-width: 980px; margin: 0 auto; padding-block: 0 56px; padding-left: 16px; padding-right: 16px; }
+
+  .masthead { border-bottom: 2px solid var(--ink); padding: 22px 0 10px; }
+  .masthead .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+    color: var(--ink-3); text-transform: uppercase; margin-bottom: 3px;
+  }
+  .masthead h1 {
+    font-family: var(--display); font-weight: 600; font-size: 29px;
+    margin: 0; line-height: 1.2; text-wrap: balance;
+  }
+  .masthead .strip {
+    display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: 10px;
+    font-size: 13px; color: var(--ink-2);
+  }
+  .masthead .strip b { font-family: var(--mono); color: var(--ink); font-weight: 500; }
+
+  .lede { color: var(--ink-2); font-size: 15px; margin: 14px 0 6px; max-width: 70ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  section { border-top: 1px solid var(--line); padding: 20px 0 6px; margin-top: 22px; }
+  section > .label {
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-3); margin-bottom: 4px;
+  }
+  section > h2 {
+    font-family: var(--display); font-weight: 600; font-size: 22px; margin: 0 0 4px;
+  }
+  section > .note { color: var(--ink-2); font-size: 15px; margin: 0 0 14px; max-width: 72ch; }
+  section > .note b { color: var(--ink); font-weight: 600; }
+
+  .chart {
+    background: var(--paper); border: 1px solid var(--line);
+    padding: 18px 12px; overflow-x: auto; margin-bottom: 14px;
+  }
+  .mermaid { display: flex; justify-content: center; min-width: 520px; }
+
+  .cap { font-size: 13px; color: var(--ink-3); margin: 0 0 18px; }
+  .cap b { color: var(--ink-2); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 16px; }
+  th, td {
+    border: 0; border-bottom: 1px solid var(--line-2);
+    padding: 10px 12px 10px 0; text-align: left; vertical-align: top;
+  }
+  th {
+    border-bottom: 1px solid var(--ink); font-weight: 600; font-size: 11px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); padding-top: 0;
+  }
+  tr:last-child td { border-bottom: 0; }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+
+  .rule-note {
+    border-left: 2px solid var(--pine); padding: 3px 0 3px 13px;
+    font-size: 14px; color: var(--ink-2); margin: 0 0 16px;
+  }
+  .rule-note b { color: var(--ink); font-weight: 600; }
+  .rule-note.stop { border-left-color: var(--stamp); }
+  .rule-note.stop b { color: var(--stamp); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); margin-bottom: 16px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 13px; height: 13px; border: 1px solid var(--ink-3); display: inline-block; }
+  .swatch.pine { background: var(--pine-soft); border-color: var(--pine); }
+  .swatch.amber { background: var(--amber-soft); border-color: var(--amber); }
+  .swatch.stamp { background: var(--stamp-soft); border-color: var(--stamp); }
+  .swatch.plain { background: var(--paper-2); }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <div class="kicker">Process Flow</div>
+    <h1>ผังขั้นตอนระบบคุณภาพห้องปฏิบัติการ</h1>
+    <div class="strip">
+      <span>กลุ่มงานเทคนิคการแพทย์</span>
+      <span>อ้างอิง <b>ISO 15189:2022</b> ข้อ 8.3 / 8.7 / 8.8</span>
+      <span>ระบบเวอร์ชัน <b>v2.1</b></span>
+    </div>
+  </header>
+
+  <p class="lede">
+    ผังการทำงานของระบบที่สร้างไว้ แยกตามโมดูล — <b>สาย v1.x มีเฉพาะส่วนที่ 1 และ 2</b>
+    (เอกสาร + DAR) ส่วนที่ 3 และ 4 เป็นของ v2.x
+  </p>
+
+  <div class="legend">
+    <span><i class="swatch plain"></i> ขั้นตอนปกติ</span>
+    <span><i class="swatch amber"></i> จุดตัดสินใจ / รอลงนาม</span>
+    <span><i class="swatch pine"></i> ผ่าน · ปิดเรื่อง</span>
+    <span><i class="swatch stamp"></i> ตีกลับ · ยกเลิกใช้</span>
+  </div>
+
+  <!-- ================= 1. ภาพรวม ================= -->
+  <section>
+    <div class="label">ภาพรวม</div>
+    <h2>วงจรทั้งระบบ</h2>
+    <p class="note">
+      หัวใจของ v2.1 คือ<b>วงนี้ปิดครบ</b> — เอกสารถูกตรวจ ข้อตรวจพบกลายเป็น CAPA
+      CAPA จบด้วยใบขออนุมัติแก้เอกสาร แล้วเอกสารฉบับใหม่ก็กลับเข้าคลัง ไล่ย้อนได้ทุกทิศ
+    </p>
+    <div class="chart">
+      <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'IBM Plex Sans Thai, sans-serif','fontSize':'14px','primaryColor':'#edefea','primaryTextColor':'#14181a','primaryBorderColor':'#818890','lineColor':'#4c5358','tertiaryColor':'#f6f7f4'}}}%%
+flowchart LR
+  DOC["เอกสารคุณภาพในคลัง<br/>WI · SP · ED · LB"]
+  AUD["ตรวจติดตามภายใน<br/>Internal Audit"]
+  FND["ข้อตรวจพบ<br/>NC / OFI"]
+  CAP["CAPA<br/>แก้ที่สาเหตุราก"]
+  DAR["DAR<br/>ใบขออนุมัติแก้เอกสาร"]
+
+  DOC -->|"ถูกตรวจ"| AUD
+  AUD -->|"บันทึกสิ่งที่พบ"| FND
+  FND -->|"ทุก NC ต้องเปิด"| CAP
+  CAP -->|"ต้องแก้เอกสาร"| DAR
+  DAR -->|"ออกฉบับใหม่"| DOC
+
+  OTH["ข้อร้องเรียน · EQA ผิดปกติ<br/>งานที่ไม่สอดคล้อง"] -.->|"เปิดตรงได้"| CAP
+  RTN["ทบทวนตามรอบ · มาตรฐานภายนอกเปลี่ยน"] -.->|"เปิดตรงได้"| DAR
+
+  classDef ok fill:#dde8e3,stroke:#1f4e46,color:#14181a;
+  classDef plain fill:#edefea,stroke:#818890,color:#14181a;
+  classDef soft fill:#f6f7f4,stroke:#c6cac2,color:#4c5358;
+  class DOC ok;
+  class AUD,FND,CAP,DAR plain;
+  class OTH,RTN soft;
+      </pre>
+    </div>
+    <p class="cap"><b>เส้นประ</b> = ทางเข้าที่ไม่ได้มาจากการตรวจติดตาม — CAPA และ DAR เปิดเองได้</p>
+  </section>
+
+  <!-- ================= 2. เอกสาร + DAR ================= -->
+  <section>
+    <div class="label">ส่วนที่ 1 · มีตั้งแต่ v1.1</div>
+    <h2>เอกสาร: ขออนุมัติ → จัดทำ → ลงนาม 3 ขั้น</h2>
+    <p class="note">
+      DAR เป็นประตูหน้า ขออนุญาต<b>ก่อน</b>ลงมือร่าง — คำขอประเภท "ยกเลิกเอกสาร" จบตั้งแต่ขั้นอนุมัติ
+      ไม่ต้องอัปโหลดอะไร เพราะไม่มีฉบับใหม่มาแทน
+    </p>
+    <div class="chart">
+      <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'IBM Plex Sans Thai, sans-serif','fontSize':'14px','primaryColor':'#edefea','primaryTextColor':'#14181a','primaryBorderColor':'#818890','lineColor':'#4c5358'}}}%%
+flowchart TD
+  A(["ต้องจัดทำ / แก้ไข / ยกเลิกเอกสาร"]) --> B["ยื่นคำขอ DAR<br/>+ ประเมินผลกระทบ 3 ข้อ"]
+  B --> C{"ผู้อนุมัติคำขอ<br/>พิจารณา"}
+  C -->|"ไม่อนุมัติ"| X1["ปิดคำขอ<br/>แจ้งผู้ขอ"]
+  C -->|"อนุมัติ · ประเภทยกเลิก"| W["ตีเอกสารเป็น ยกเลิกใช้ ทันที<br/>เก็บต่อ 1 ปีตามระยะเก็บรักษา"]
+  C -->|"อนุมัติ · จัดทำ/แก้ไข"| D["ผู้จัดทำได้ลิงก์หน้าอัปโหลด<br/>เติมข้อมูลจากคำขอให้แล้ว"]
+
+  D --> E["อัปโหลดไฟล์ + ระบุฉบับที่<br/>+ เซ็นผู้จัดทำ"]
+  E --> F{"ผู้ทบทวน<br/>หัวหน้างาน"}
+  F -->|"ไม่ผ่าน"| X2["ไม่ผ่านการทบทวน<br/>แก้แล้วยื่นใหม่"]
+  F -->|"ผ่าน · เซ็น"| G{"ผู้อนุมัติ<br/>หัวหน้ากลุ่มงาน"}
+  G -->|"ไม่อนุมัติ"| X3["ไม่อนุมัติ<br/>แก้แล้วยื่นใหม่"]
+  G -->|"อนุมัติ · เซ็น"| H["ประกาศใช้"]
+
+  H --> I["สร้างใบปกควบคุมเอกสาร PDF<br/>เก็บ Drive คู่ไฟล์ต้นฉบับ"]
+  H --> J["ฉบับก่อนหน้า → ยกเลิกใช้"]
+  H --> K["ปิด DAR อัตโนมัติ<br/>ผูกเอกสารกลับไปที่คำขอ"]
+  I --> L(["เข้าคลังเอกสาร"])
+  J --> L
+  K --> L
+
+  classDef ok fill:#dde8e3,stroke:#1f4e46,color:#14181a;
+  classDef dec fill:#f0e7d3,stroke:#85580f,color:#14181a;
+  classDef bad fill:#f1e1de,stroke:#9d2f27,color:#14181a;
+  classDef plain fill:#edefea,stroke:#818890,color:#14181a;
+  class C,F,G dec;
+  class X1,X2,X3,W bad;
+  class H,I,J,K,L ok;
+  class A,B,D,E plain;
+      </pre>
+    </div>
+    <div class="rule-note stop">
+      <b>กติกาที่ระบบบังคับ</b> — เลขเอกสารเดียวกันมีฉบับที่ยังรอลงนามซ้อนกัน 2 ฉบับไม่ได้
+      และมีคำขอ DAR ค้างได้ครั้งละ 1 ใบ
+    </div>
+    <div class="rule-note">
+      <b>ฉบับที่</b> เป็นตัวเลขหรือตัวอักษรก็ได้ (ของจริงเดิน <code>1 → 2 → C → D → D/1</code>)
+      ระบบจึงแค่เดาค่าตั้งต้นให้ ไม่บวกเลขอัตโนมัติ แต่กันฉบับซ้ำให้
+    </div>
+  </section>
+
+  <!-- ================= 3. ใครทำอะไร ================= -->
+  <section>
+    <div class="label">ส่วนที่ 2 · มีตั้งแต่ v1.1</div>
+    <h2>ใครทำอะไร ในขั้นไหน</h2>
+    <table>
+      <tr><th>บทบาท</th><th>ทำอะไร</th><th>ระบบทำให้อะไร</th></tr>
+      <tr>
+        <td>ผู้จัดทำ<br><span class="cap">นักเทคนิคการแพทย์</span></td>
+        <td>ยื่น DAR · อัปโหลดไฟล์ · ระบุฉบับที่และสาระการแก้ไข · เซ็นผู้จัดทำ</td>
+        <td>เติมข้อมูลจากคำขอให้ · ล็อกเลขที่/ประเภท/หน่วยงานไม่ให้แก้ · แจ้งผลกลับทางอีเมล</td>
+      </tr>
+      <tr>
+        <td>ผู้ทบทวน<br><span class="cap">หัวหน้างาน</span></td>
+        <td>เปิดลิงก์จากอีเมล · ดูไฟล์ · เซ็นผ่าน หรือ ตีกลับพร้อมความเห็น</td>
+        <td>ส่งลิงก์ token ให้ ไม่ต้อง login · แชร์ไฟล์ให้อัตโนมัติ · ส่งต่อขั้นอนุมัติเอง</td>
+      </tr>
+      <tr>
+        <td>ผู้อนุมัติ<br><span class="cap">หัวหน้ากลุ่มงาน</span></td>
+        <td>พิจารณา DAR · เซ็นอนุมัติเอกสารขั้นสุดท้าย</td>
+        <td>สร้างใบปก PDF · ตีฉบับเก่าเป็นยกเลิกใช้ · ปิด DAR · คำนวณกำหนดทบทวนถัดไป</td>
+      </tr>
+      <tr>
+        <td>ผู้จัดการคุณภาพ<br><span class="cap">v2.x เท่านั้น</span></td>
+        <td>ลงนามปิดรอบตรวจ · ทวนสอบประสิทธิผล CAPA</td>
+        <td>บังคับว่า NC ต้องมี CAPA ครบก่อนปิดรอบ · สร้างรายงานตรวจและแบบฟอร์ม CAPA เป็น PDF</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- ================= 4. Audit ================= -->
+  <section>
+    <div class="label">ส่วนที่ 3 · v2.x เท่านั้น</div>
+    <h2>ตรวจติดตามภายใน</h2>
+    <p class="note">
+      จุดที่ระบบไม่ยอมให้ข้าม: <b>ปิดรอบตรวจไม่ได้ถ้ายังมี NC ที่ไม่ได้เปิด CAPA</b>
+      — เป็นกติกาในโค้ด ไม่ใช่ความเคยชินของคนใช้
+    </p>
+    <div class="chart">
+      <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'IBM Plex Sans Thai, sans-serif','fontSize':'14px','primaryColor':'#edefea','primaryTextColor':'#14181a','primaryBorderColor':'#818890','lineColor':'#4c5358'}}}%%
+flowchart TD
+  A(["แผนการตรวจประจำปี"]) --> B["เปิดรอบตรวจ<br/>เลือกหน่วยงาน · ขอบเขตข้อกำหนด · ทีมผู้ตรวจ"]
+  B --> C["บันทึกสิ่งที่ตรวจพบทีละข้อ<br/>ข้อกำหนด · ระดับ · หลักฐาน"]
+  C --> D{"ระดับที่ให้"}
+  D -->|"เป็นไปตามข้อกำหนด"| E["ปิดข้อนั้นเลย"]
+  D -->|"OFI"| F["ไม่บังคับเปิด CAPA"]
+  D -->|"NC ร้ายแรง · 30 วัน<br/>NC ไม่ร้ายแรง · 60 วัน"| G["ต้องเปิด CAPA"]
+  G --> H["เปิด CAPA จากข้อตรวจพบ<br/>ดึงปัญหา/หลักฐานไปให้"]
+
+  E --> I{"ส่งสรุปผลเพื่อลงนาม"}
+  F --> I
+  H --> I
+  I -->|"ยังมี NC ไม่มี CAPA"| J["ระบบปฏิเสธ<br/>บอกเลขข้อที่ขาด"]
+  J --> C
+  I -->|"ครบแล้ว"| K["หัวหน้าทีมผู้ตรวจเซ็น"]
+  K --> L["ผู้จัดการคุณภาพเซ็นปิดรอบ"]
+  L --> M(["รายงานผลการตรวจ PDF"])
+
+  classDef ok fill:#dde8e3,stroke:#1f4e46,color:#14181a;
+  classDef dec fill:#f0e7d3,stroke:#85580f,color:#14181a;
+  classDef bad fill:#f1e1de,stroke:#9d2f27,color:#14181a;
+  classDef plain fill:#edefea,stroke:#818890,color:#14181a;
+  class D,I dec;
+  class J bad;
+  class K,L,M,E ok;
+  class A,B,C,F,G,H plain;
+      </pre>
+    </div>
+  </section>
+
+  <!-- ================= 5. CAPA ================= -->
+  <section>
+    <div class="label">ส่วนที่ 4 · v2.x เท่านั้น</div>
+    <h2>การแก้ไขและป้องกัน (CAPA)</h2>
+    <p class="note">
+      สองจุดที่แยก CAPA ออกจาก "แก้เฉพาะหน้าแล้วจบ": ต้องมี<b>สาเหตุราก</b>ก่อนถึงจะรายงานผลได้
+      และ<b>ทวนสอบไม่ผ่านจะตีกลับ ไม่ปิดเรื่อง</b>
+    </p>
+    <div class="chart">
+      <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'IBM Plex Sans Thai, sans-serif','fontSize':'14px','primaryColor':'#edefea','primaryTextColor':'#14181a','primaryBorderColor':'#818890','lineColor':'#4c5358'}}}%%
+flowchart TD
+  A(["ข้อตรวจพบ NC · ข้อร้องเรียน<br/>EQA ผิดปกติ · งานที่ไม่สอดคล้อง"]) --> B["เปิด CAPA<br/>ระบุปัญหา + ผู้รับผิดชอบ + กำหนดเสร็จ"]
+  B --> C["แก้เฉพาะหน้า<br/>Correction"]
+  C --> D["วิเคราะห์สาเหตุราก<br/>5 Why · ผังก้างปลา · FMEA"]
+  D --> E{"กรอกสาเหตุราก<br/>แล้วหรือยัง"}
+  E -->|"ยังว่าง"| F["ระบบปฏิเสธ<br/>ข้ามไปรายงานผลไม่ได้"]
+  F --> D
+  E -->|"ครบ"| G["วางแผนแก้ที่สาเหตุราก<br/>Corrective action"]
+  G --> H["ดำเนินการ แล้วรายงานผล + หลักฐาน"]
+  H --> I["รอทวนสอบประสิทธิผล<br/>ตั้งต้น 90 วัน"]
+  I --> J{"ผู้จัดการคุณภาพ<br/>ทวนสอบ"}
+  J -->|"ไม่ผ่าน"| K["กลับไปขั้นแก้ไข<br/>กำหนดวันใหม่ · CAPA ไม่ถูกปิด"]
+  K --> G
+  J -->|"ผ่าน · เซ็น"| L["ปิด CAPA<br/>ปิดข้อตรวจพบต้นทางให้ด้วย"]
+  L --> M(["แบบฟอร์ม CAPA PDF"])
+  G -.->|"ถ้าต้องแก้เอกสาร"| N["เปิด DAR จาก CAPA นี้"]
+
+  classDef ok fill:#dde8e3,stroke:#1f4e46,color:#14181a;
+  classDef dec fill:#f0e7d3,stroke:#85580f,color:#14181a;
+  classDef bad fill:#f1e1de,stroke:#9d2f27,color:#14181a;
+  classDef plain fill:#edefea,stroke:#818890,color:#14181a;
+  class E,J dec;
+  class F,K bad;
+  class L,M ok;
+  class A,B,C,D,G,H,I,N plain;
+      </pre>
+    </div>
+  </section>
+
+  <!-- ================= 6. สถานะ ================= -->
+  <section>
+    <div class="label">อ้างอิง</div>
+    <h2>สถานะที่ใช้ในระบบ</h2>
+    <table>
+      <tr><th>เรื่อง</th><th>ลำดับสถานะ</th></tr>
+      <tr>
+        <td>คำขอ DAR</td>
+        <td class="mono">รออนุมัติคำขอ → อนุมัติให้ดำเนินการ → ดำเนินการแล้ว<br>
+          <span style="color:var(--stamp)">หรือ ไม่อนุมัติคำขอ / ยกเลิกคำขอ</span></td>
+      </tr>
+      <tr>
+        <td>เอกสาร</td>
+        <td class="mono">รอทบทวน → รออนุมัติ → อนุมัติแล้ว → ยกเลิกใช้<br>
+          <span style="color:var(--stamp)">หรือ ไม่ผ่านการทบทวน / ไม่อนุมัติ</span></td>
+      </tr>
+      <tr>
+        <td>รอบตรวจ</td>
+        <td class="mono">วางแผน → กำลังตรวจ → รอลงนามสรุปผล → ปิดรอบ</td>
+      </tr>
+      <tr>
+        <td>ข้อตรวจพบ</td>
+        <td class="mono">เปิด → อยู่ระหว่าง CAPA → ปิด</td>
+      </tr>
+      <tr>
+        <td>CAPA</td>
+        <td class="mono">เปิด (รอวิเคราะห์สาเหตุ) → กำลังแก้ไข → รอทวนสอบประสิทธิผล → ปิด</td>
+      </tr>
+    </table>
+    <p class="cap">
+      ผังนี้สะท้อนโค้ดที่เขียนไว้จริงใน <b>v2.1</b> — ยังไม่เคย deploy บน Apps Script
+      จึงยังไม่มีการทดสอบ flow บนของจริง
+    </p>
+  </section>
+</div>

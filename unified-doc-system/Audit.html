@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="audit" data-audit="<?= auditId ?>">
+<div class="wrap wide">
+  <?!= include('Nav') ?>
+  <div id="content" class="msg wait">กำลังโหลด...</div>
+</div>
+
+<?!= include('SigPad') ?>
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+  var AUDIT_ID = document.body.getAttribute('data-audit');
+  var INIT = null;
+  var AUDIT = null;
+  var sig = null;
+  var editingFinding = null;
+
+  google.script.run.withSuccessHandler(function (init) {
+    INIT = init;
+    if (AUDIT_ID) loadAudit(); else renderList();
+  }).withFailureHandler(fail).getAuditInit();
+
+  function fail(err) {
+    document.getElementById('content').className = 'msg err';
+    document.getElementById('content').textContent = 'ทำรายการไม่สำเร็จ: ' + err.message;
+  }
+
+  function loadAudit() {
+    google.script.run.withSuccessHandler(function (a) {
+      AUDIT = a;
+      renderAudit();
+    }).withFailureHandler(fail).getAudit(AUDIT_ID);
+  }
+
+  // ============================================================
+  // รายการรอบตรวจ + ฟอร์มเปิดรอบใหม่
+  // ============================================================
+  function renderList() {
+    google.script.run.withSuccessHandler(function (list) {
+      var html = '<h1>ตรวจติดตามภายใน (Internal Audit)</h1>' +
+        '<div class="sub">วางแผนรอบตรวจตามข้อกำหนด ISO 15189 บันทึกสิ่งที่ตรวจพบ แล้วเปิด CAPA ต่อจาก NC ได้ทันที</div>';
+
+      html += '<div class="section-head"><h2>รอบตรวจทั้งหมด</h2><div class="spacer"></div>' +
+        '<button class="ghost" id="toggleNew">+ เปิดรอบตรวจใหม่</button></div>';
+
+      html += '<div class="card" id="newCard" style="display:none">' + newAuditForm() + '</div>';
+
+      if (!list.length) {
+        html += '<div class="card">ยังไม่มีรอบตรวจ — กด "เปิดรอบตรวจใหม่" เพื่อเริ่ม</div>';
+      } else {
+        html += '<div class="card" style="overflow-x:auto"><table class="list">' +
+          '<tr><th>เลขที่</th><th>หน่วยงาน</th><th>ประเภท</th><th>วันที่ตรวจ</th>' +
+          '<th>ผลการตรวจ</th><th>สถานะ</th><th></th></tr>';
+        list.forEach(function (a) {
+          html += '<tr>' +
+            '<td>' + esc(a.auditNo) + '</td>' +
+            '<td>' + esc(a.unit) + '</td>' +
+            '<td>' + esc(a.auditTypeLabel) + '</td>' +
+            '<td>' + esc(a.auditDate || a.plannedDate || '-') + '</td>' +
+            '<td>พบ ' + a.findingCount + ' ข้อ · NC ' + a.ncCount +
+            (a.openNcCount ? ' <span class="badge wait">ยังไม่ปิด ' + a.openNcCount + '</span>' : '') + '</td>' +
+            '<td><span class="badge ' + (a.status === 'ปิดรอบ' ? 'approved' : 'wait') + '">' + esc(a.status) + '</span></td>' +
+            '<td><a class="badge" href="' + BASE_URL + '?page=audit&id=' + esc(a.auditId) + '">เปิด</a>' +
+            (a.reportPdfUrl ? ' <a class="badge" href="' + esc(a.reportPdfUrl) + '" target="_blank">รายงาน PDF</a>' : '') +
+            '</td></tr>';
+        });
+        html += '</table></div>';
+      }
+
+      show(html);
+      document.getElementById('toggleNew').onclick = function () {
+        var c = document.getElementById('newCard');
+        c.style.display = (c.style.display === 'none') ? 'block' : 'none';
+      };
+      wireNewAudit();
+    }).withFailureHandler(fail).getAuditList();
+  }
+
+  function newAuditForm() {
+    return '<h3>เปิดรอบตรวจใหม่ <span class="mini">(เลขที่ถัดไป: ' + esc(INIT.nextAuditNo) + ')</span></h3>' +
+      '<div class="row">' +
+      '<div class="field"><label for="a-unit">หน่วยงานที่รับการตรวจ <span style="color:var(--danger)">*</span></label>' +
+      '<select id="a-unit">' + INIT.units.map(function (u) {
+        return '<option value="' + esc(u) + '">' + esc(u) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="field"><label for="a-type">ประเภทการตรวจ</label><select id="a-type">' +
+      INIT.auditTypes.map(function (t) {
+        return '<option value="' + esc(t.value) + '">' + esc(t.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="field"><label for="a-date">วันที่นัดตรวจ</label><input type="date" id="a-date"></div>' +
+      '</div>' +
+      '<div class="row">' +
+      '<div class="field"><label for="a-lead">หัวหน้าทีมผู้ตรวจ <span style="color:var(--danger)">*</span></label>' +
+      '<input type="text" id="a-lead" autocomplete="off"></div>' +
+      '<div class="field"><label for="a-leadmail">อีเมลหัวหน้าทีมผู้ตรวจ</label>' +
+      '<input type="text" id="a-leadmail" autocomplete="off"></div>' +
+      '</div>' +
+      '<div class="row">' +
+      '<div class="field"><label for="a-auditors">ผู้ตรวจร่วม</label>' +
+      '<input type="text" id="a-auditors" autocomplete="off"></div>' +
+      '<div class="field"><label for="a-auditee">ผู้รับการตรวจ (หัวหน้างานที่ถูกตรวจ)</label>' +
+      '<input type="text" id="a-auditee" autocomplete="off"></div>' +
+      '</div>' +
+      '<div class="field"><label>ขอบเขต — ข้อกำหนดที่จะตรวจ</label>' +
+      '<div class="hint">ไม่เลือก = ตรวจทุกข้อกำหนดตามแผนประจำปี</div>' +
+      '<div class="chips" id="a-clauses">' + INIT.clauses.map(function (c) {
+        return '<label><input type="checkbox" value="' + esc(c.no) + '"> ' + esc(c.no) + ' ' + esc(c.label) + '</label>';
+      }).join('') + '</div></div>' +
+      '<button class="act" id="a-create" style="margin-top:4px">เปิดรอบตรวจ</button>' +
+      '<div class="msg" id="a-msg"></div>';
+  }
+
+  function wireNewAudit() {
+    var btn = document.getElementById('a-create');
+    if (!btn) return;
+    btn.onclick = function () {
+      var clauses = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#a-clauses input:checked'), function (x) {
+        clauses.push(x.value);
+      });
+      btn.disabled = true;
+      setMsg('a-msg', 'กำลังบันทึก...', 'wait');
+      google.script.run.withSuccessHandler(function (res) {
+        if (res.selfAudit) {
+          setMsg('a-msg', 'เตือน: หัวหน้าทีมผู้ตรวจกับผู้รับการตรวจเป็นคนเดียวกัน — ISO 15189 ข้อ 8.8 กำหนดว่าผู้ตรวจต้องไม่ตรวจงานตัวเอง', 'err');
+        }
+        location.href = BASE_URL + '?page=audit&id=' + res.auditId;
+      }).withFailureHandler(function (err) {
+        btn.disabled = false;
+        setMsg('a-msg', err.message, 'err');
+      }).createAudit({
+        unit: document.getElementById('a-unit').value,
+        auditType: document.getElementById('a-type').value,
+        plannedDate: document.getElementById('a-date').value,
+        leadAuditor: document.getElementById('a-lead').value,
+        leadAuditorEmail: document.getElementById('a-leadmail').value,
+        auditors: document.getElementById('a-auditors').value,
+        auditee: document.getElementById('a-auditee').value,
+        scopeClauses: clauses
+      });
+    };
+  }
+
+  // ============================================================
+  // รายละเอียดรอบตรวจ
+  // ============================================================
+  function renderAudit() {
+    var a = AUDIT;
+    var closed = (a.status === 'ปิดรอบ');
+    var waitSign = (a.status === 'รอลงนามสรุปผล');
+
+    var html = '<div class="crumb mini no-print"><a href="' + BASE_URL + '?page=audit">← รอบตรวจทั้งหมด</a></div>' +
+      '<h1>' + esc(a.auditNo) + '</h1>' +
+      '<div class="sub">' + esc(a.unit) + ' · ' + esc(a.auditTypeLabel) +
+      ' <span class="badge ' + (closed ? 'approved' : 'wait') + '">' + esc(a.status) + '</span></div>';
+
+    html += '<div class="stepper no-print">' +
+      step('1 วางแผน', true) +
+      step('2 บันทึกผลการตรวจ', a.status !== 'วางแผน') +
+      step('3 เปิด CAPA ให้ครบ', waitSign || closed) +
+      step('4 ลงนามปิดรอบ', closed) +
+      '</div>';
+
+    html += '<div class="card"><h3>ข้อมูลรอบตรวจ</h3><table class="meta-table">' +
+      row('เลขที่รอบตรวจ', a.auditNo) +
+      row('ประเภทการตรวจ', a.auditTypeLabel) +
+      row('หน่วยงานที่รับการตรวจ', a.unit) +
+      row('ผู้รับการตรวจ', a.auditee) +
+      row('วันที่นัดตรวจ', a.plannedDateThai) +
+      row('วันที่ตรวจจริง', a.auditDateThai) +
+      row('หัวหน้าทีมผู้ตรวจ', a.leadAuditor) +
+      row('ผู้ตรวจร่วม', a.auditors) +
+      row('ขอบเขต (ข้อกำหนด)', a.scopeClauses) +
+      '</table></div>';
+
+    // ---------- สิ่งที่ตรวจพบ ----------
+    html += '<div class="section-head"><h2>สิ่งที่ตรวจพบ (' + a.findings.length + ')</h2>' +
+      '<div class="spacer"></div>' +
+      (closed ? '' : '<button class="ghost no-print" id="addFinding">+ บันทึกสิ่งที่ตรวจพบ</button>') + '</div>';
+
+    if (!closed) html += '<div class="card no-print" id="findingCard" style="display:none">' + findingForm() + '</div>';
+
+    if (!a.findings.length) {
+      html += '<div class="card">ยังไม่มีการบันทึกผลการตรวจ</div>';
+    } else {
+      html += '<div class="card" style="overflow-x:auto"><table class="list">' +
+        '<tr><th>เลขที่</th><th>ข้อกำหนด</th><th>ระดับ</th><th>สิ่งที่ตรวจพบ</th><th>CAPA</th><th></th></tr>';
+      a.findings.forEach(function (f) {
+        html += '<tr>' +
+          '<td>' + esc(f.findingNo) + '</td>' +
+          '<td>' + esc(f.clause || '-') + '</td>' +
+          '<td><span class="badge ' + (f.needsCapa ? 'rejected' : (f.grade === 'CONFORM' ? 'approved' : 'wait')) + '">' +
+          esc(f.gradeLabel) + '</span></td>' +
+          '<td><b>' + esc(f.title) + '</b>' +
+          (f.description ? '<div class="mini">' + esc(f.description) + '</div>' : '') +
+          (f.evidence ? '<div class="mini">หลักฐาน: ' + esc(f.evidence) + '</div>' : '') +
+          (f.relatedDocCode ? '<div class="mini">เอกสารที่เกี่ยวข้อง: ' + esc(f.relatedDocCode) + '</div>' : '') +
+          '</td>' +
+          '<td>' + (f.capaId
+            ? '<a class="badge" href="' + BASE_URL + '?page=capa&id=' + esc(f.capaId) + '">' + esc(f.capaNo) + '</a>' +
+              '<div class="mini">' + esc(f.capaStatus) + '</div>'
+            : (f.needsCapa ? '<span class="badge wait">ต้องเปิด CAPA</span>' : '<span class="mini">ไม่ต้องเปิด</span>')) + '</td>' +
+          '<td class="no-print">' +
+          (closed ? '' :
+            (f.needsCapa && !f.capaId ? '<button class="ghost open-capa" data-id="' + esc(f.findingId) + '">เปิด CAPA</button> ' : '') +
+            '<button class="ghost edit-f" data-id="' + esc(f.findingId) + '">แก้ไข</button>') +
+          '</td></tr>';
+      });
+      html += '</table></div>';
+    }
+
+    // ---------- สรุป / ลงนาม ----------
+    if (!closed && !waitSign) {
+      html += '<div class="card no-print"><h3>สรุปผลและส่งลงนาม</h3>' +
+        '<div class="field"><label for="a-summary">สรุปผลการตรวจโดยหัวหน้าทีมผู้ตรวจ</label>' +
+        '<textarea id="a-summary">' + esc(a.summaryNote) + '</textarea></div>' +
+        '<div class="hint">ระบบจะไม่ยอมให้ส่งลงนามถ้ายังมี NC ที่ยังไม่ได้เปิด CAPA</div>' +
+        '<button class="act" id="a-submit">ส่งสรุปผลเพื่อลงนาม</button>' +
+        '<div class="msg" id="a-msg2"></div></div>';
+    }
+
+    html += '<div class="card"><h3>การลงนาม</h3><div class="sigs">' +
+      sigBlock('หัวหน้าทีมผู้ตรวจ', a.leadName, a.leadAt, a.leadSignature, '') +
+      sigBlock(a.qmTitle, a.qmName, a.qmAt, a.qmSignature, a.qmComment) +
+      '</div>';
+    if (a.reportPdfUrl) {
+      html += '<div style="margin-top:12px"><a href="' + esc(a.reportPdfUrl) + '" target="_blank">เปิดรายงานผลการตรวจ (PDF)</a></div>';
+    }
+    html += '</div>';
+
+    if (waitSign) {
+      var stage = a.leadSignature ? 'qm' : 'lead';
+      html += '<div class="card no-print"><h3>ลงนาม' +
+        (stage === 'lead' ? 'ในฐานะหัวหน้าทีมผู้ตรวจ' : 'ปิดรอบในฐานะ ' + esc(a.qmTitle)) + '</h3>' +
+        '<div class="field"><label for="s-name">ชื่อ-นามสกุล ผู้ลงนาม <span style="color:var(--danger)">*</span></label>' +
+        '<input type="text" id="s-name" value="' + esc(stage === 'lead' ? a.leadAuditor : '') + '"></div>' +
+        (stage === 'qm' ? '<div class="field"><label for="s-comment">ความเห็น</label><textarea id="s-comment"></textarea></div>' : '') +
+        '<div class="field"><label>ลายเซ็นอิเล็กทรอนิกส์ <span style="color:var(--danger)">*</span></label>' +
+        '<div id="sigHost"></div></div>' +
+        '<button class="act" id="s-go">' + (stage === 'lead' ? 'ลงนามสรุปผล' : 'ลงนามปิดรอบตรวจ') + '</button>' +
+        '<div class="msg" id="s-msg"></div></div>';
+    }
+
+    show(html);
+    wireAudit(waitSign);
+  }
+
+  function findingForm() {
+    return '<h3 id="f-title">บันทึกสิ่งที่ตรวจพบ</h3>' +
+      '<div class="row">' +
+      '<div class="field"><label for="f-clause">ข้อกำหนดที่เกี่ยวข้อง</label><select id="f-clause">' +
+      '<option value="">— เลือกข้อกำหนด —</option>' +
+      INIT.clauses.map(function (c) {
+        return '<option value="' + esc(c.no + ' ' + c.label) + '">' + esc(c.no + ' ' + c.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="field"><label for="f-grade">ระดับผลการตรวจ <span style="color:var(--danger)">*</span></label>' +
+      '<select id="f-grade">' + INIT.grades.map(function (g) {
+        return '<option value="' + esc(g.value) + '">' + esc(g.label) + '</option>';
+      }).join('') + '</select>' +
+      '<div class="hint" id="f-gradehint"></div></div>' +
+      '</div>' +
+      '<div class="field"><label for="f-head">หัวข้อสิ่งที่ตรวจพบ <span style="color:var(--danger)">*</span></label>' +
+      '<input type="text" id="f-head" autocomplete="off"></div>' +
+      '<div class="field"><label for="f-desc">รายละเอียด</label>' +
+      '<div class="hint">เขียนให้เห็นว่า "ข้อกำหนด/เอกสารบอกอะไร" กับ "พบอะไรจริง"</div>' +
+      '<textarea id="f-desc"></textarea></div>' +
+      '<div class="row">' +
+      '<div class="field"><label for="f-evi">หลักฐานที่ตรวจพบ</label>' +
+      '<input type="text" id="f-evi" autocomplete="off"></div>' +
+      '<div class="field"><label for="f-doc">เลขที่เอกสารที่เกี่ยวข้อง</label>' +
+      '<input type="text" id="f-doc" autocomplete="off" placeholder="เช่น WI-MIC-012"></div>' +
+      '</div>' +
+      '<button class="act" id="f-save">บันทึก</button> ' +
+      '<button class="ghost" id="f-cancel">ยกเลิก</button>' +
+      '<div class="msg" id="f-msg"></div>';
+  }
+
+  function wireAudit(waitSign) {
+    var add = document.getElementById('addFinding');
+    if (add) {
+      add.onclick = function () {
+        editingFinding = null;
+        var c = document.getElementById('findingCard');
+        c.style.display = 'block';
+        document.getElementById('f-title').textContent = 'บันทึกสิ่งที่ตรวจพบ';
+        clearFindingForm();
+        c.scrollIntoView({ block: 'nearest' });
+      };
+    }
+
+    var grade = document.getElementById('f-grade');
+    if (grade) {
+      grade.onchange = showGradeHint;
+      showGradeHint();
+      document.getElementById('f-cancel').onclick = function () {
+        document.getElementById('findingCard').style.display = 'none';
+      };
+      document.getElementById('f-save').onclick = saveFinding;
+    }
+
+    each('.edit-f', function (b) {
+      b.onclick = function () {
+        var f = AUDIT.findings.filter(function (x) { return x.findingId === b.getAttribute('data-id'); })[0];
+        if (!f) return;
+        editingFinding = f.findingId;
+        document.getElementById('findingCard').style.display = 'block';
+        document.getElementById('f-title').textContent = 'แก้ไข ' + f.findingNo;
+        document.getElementById('f-clause').value = f.clause || '';
+        document.getElementById('f-grade').value = f.grade;
+        document.getElementById('f-head').value = f.title;
+        document.getElementById('f-desc').value = f.description || '';
+        document.getElementById('f-evi').value = f.evidence || '';
+        document.getElementById('f-doc').value = f.relatedDocCode || '';
+        showGradeHint();
+        document.getElementById('findingCard').scrollIntoView({ block: 'nearest' });
+      };
+    });
+
+    each('.open-capa', function (b) {
+      b.onclick = function () {
+        location.href = BASE_URL + '?page=capa&finding=' + b.getAttribute('data-id');
+      };
+    });
+
+    var submit = document.getElementById('a-submit');
+    if (submit) {
+      submit.onclick = function () {
+        submit.disabled = true;
+        setMsg('a-msg2', 'กำลังบันทึก...', 'wait');
+        google.script.run.withSuccessHandler(function () { loadAudit(); })
+          .withFailureHandler(function (err) {
+            submit.disabled = false;
+            setMsg('a-msg2', err.message, 'err');
+          })
+          .submitAuditSummary(AUDIT_ID, document.getElementById('a-summary').value);
+      };
+    }
+
+    if (waitSign) {
+      sig = WiSig.mount('sigHost');
+      document.getElementById('s-go').onclick = function () {
+        var name = document.getElementById('s-name').value.trim();
+        if (!name) { setMsg('s-msg', 'กรุณากรอกชื่อผู้ลงนาม', 'err'); return; }
+        if (!sig.isSigned()) { setMsg('s-msg', 'กรุณาเซ็นลายเซ็นก่อน', 'err'); return; }
+        var stage = AUDIT.leadSignature ? 'qm' : 'lead';
+        var commentEl = document.getElementById('s-comment');
+        this.disabled = true;
+        setMsg('s-msg', 'กำลังบันทึก...', 'wait');
+        google.script.run.withSuccessHandler(function () { loadAudit(); })
+          .withFailureHandler(function (err) {
+            document.getElementById('s-go').disabled = false;
+            setMsg('s-msg', err.message, 'err');
+          })
+          .signAudit(AUDIT_ID, stage, name, sig.dataUrl(), commentEl ? commentEl.value : '');
+      };
+    }
+  }
+
+  function showGradeHint() {
+    var v = document.getElementById('f-grade').value;
+    var g = INIT.grades.filter(function (x) { return x.value === v; })[0];
+    document.getElementById('f-gradehint').textContent = g && g.needsCapa
+      ? 'ระดับนี้ต้องเปิด CAPA และกำหนดแล้วเสร็จภายใน ' + g.dueDays + ' วัน'
+      : 'ระดับนี้ไม่บังคับเปิด CAPA';
+  }
+
+  function clearFindingForm() {
+    ['f-clause', 'f-head', 'f-desc', 'f-evi', 'f-doc'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('f-grade').selectedIndex = 0;
+    showGradeHint();
+    setMsg('f-msg', '', '');
+  }
+
+  function saveFinding() {
+    var btn = document.getElementById('f-save');
+    btn.disabled = true;
+    setMsg('f-msg', 'กำลังบันทึก...', 'wait');
+    google.script.run.withSuccessHandler(function () {
+      btn.disabled = false;
+      document.getElementById('findingCard').style.display = 'none';
+      loadAudit();
+    }).withFailureHandler(function (err) {
+      btn.disabled = false;
+      setMsg('f-msg', err.message, 'err');
+    }).saveFinding({
+      auditId: AUDIT_ID,
+      findingId: editingFinding,
+      clause: document.getElementById('f-clause').value,
+      grade: document.getElementById('f-grade').value,
+      title: document.getElementById('f-head').value,
+      description: document.getElementById('f-desc').value,
+      evidence: document.getElementById('f-evi').value,
+      relatedDocCode: document.getElementById('f-doc').value
+    });
+  }
+
+  // ---------- helpers ----------
+  function show(html) {
+    var el = document.getElementById('content');
+    el.className = '';
+    el.innerHTML = html;
+  }
+  function each(sel, fn) {
+    Array.prototype.forEach.call(document.querySelectorAll(sel), fn);
+  }
+  function step(label, done) {
+    return '<span class="' + (done ? 'done' : '') + '">' + esc(label) + '</span>';
+  }
+  function row(k, v) {
+    return '<tr><th>' + esc(k) + '</th><td>' + esc(v || '-') + '</td></tr>';
+  }
+  function sigBlock(role, name, at, img, comment) {
+    return '<div class="sig">' +
+      (comment ? '<div class="sig-note">ความเห็น: ' + esc(comment) + '</div>' : '') +
+      (img ? '<img src="' + esc(img) + '" alt="">' : '<div class="sig-blank"></div>') +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">(' + esc(name || '.....................') + ')</div>' +
+      '<div class="sig-title">' + esc(role) + '</div>' +
+      '<div class="sig-date">วันที่ ' + esc(at || '............') + '</div></div>';
+  }
+  function setMsg(id, text, cls) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+  }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="home">
+<div class="wrap wide">
+  <?!= include('Nav') ?>
+
+  <h1>ระบบคุณภาพห้องปฏิบัติการ</h1>
+  <div class="sub">
+    เอกสารคุณภาพ · การตรวจติดตามภายใน · การแก้ไขและป้องกัน (CAPA) — รวมไว้ที่เดียวเพื่อให้ไล่ย้อนกลับได้ว่า
+    WI ฉบับไหนออกมาจากข้อตรวจพบใด
+  </div>
+
+  <div id="content" class="msg wait">กำลังโหลดข้อมูล...</div>
+</div>
+
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+
+  google.script.run.withSuccessHandler(render).withFailureHandler(function (err) {
+    document.getElementById('content').className = 'msg err';
+    document.getElementById('content').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + err.message;
+  }).getHomeData();
+
+  function render(d) {
+    var html = '';
+
+    if (!d.me.known) {
+      html += '<div class="warnbar"><b>โหมดเปิดกว้าง</b> — web app นี้ deploy แบบ "Anyone" ' +
+        'ระบบจึงไม่รู้ว่าใครเป็นผู้ใช้และ<b>ไม่บังคับสิทธิ์ตามหน้าที่</b> ' +
+        'ถ้าต้องการคุมสิทธิ์จริง ให้เปลี่ยน appsscript.json เป็น access: "DOMAIN" ' +
+        'ลงทะเบียนผู้ใช้ในแท็บ People แล้วตั้ง Config.enforce_roles = TRUE</div>';
+    } else if (!d.me.enforce) {
+      html += '<div class="warnbar">ลงชื่อเข้าใช้เป็น <b>' + esc(d.me.email) + '</b> — ' +
+        'ยังไม่ได้เปิดการบังคับสิทธิ์ (Config.enforce_roles = FALSE)</div>';
+    }
+
+    // ---------- ตัวเลขที่ต้องเห็นก่อน ----------
+    html += '<div class="tiles">' +
+      tile(d.dars.waiting, 'คำขอรออนุมัติ', d.dars.waiting ? 'warn' : '') +
+      tile(d.docs.approved, 'เอกสารบังคับใช้', '') +
+      tile(d.docs.waiting, 'เอกสารรอลงนาม', d.docs.waiting ? 'warn' : '') +
+      tile(d.docs.dueForReview.length, 'ใกล้ถึงกำหนดทบทวน', d.docs.dueForReview.length ? 'warn' : '') +
+      tile(d.findings.open, 'ข้อตรวจพบที่ยังไม่ปิด', d.findings.open ? 'warn' : '') +
+      tile(d.capas.open, 'CAPA ที่ยังเปิดอยู่', '') +
+      tile(d.capas.overdue, 'CAPA เกินกำหนด', d.capas.overdue ? 'alert' : '') +
+      '</div>';
+
+    // ---------- CAPA เกินกำหนด (เรื่องเร่งที่สุด จึงขึ้นก่อน) ----------
+    if (d.capas.overdueList.length) {
+      html += '<div class="card"><h3>CAPA เกินกำหนดแล้ว</h3>';
+      d.capas.overdueList.forEach(function (c) {
+        html += '<div class="list-row">' +
+          '<span class="key">' + esc(c.capaNo) + '</span>' +
+          '<span class="grow">' + esc(c.problem) + '</span>' +
+          '<span class="badge rejected">ครบกำหนด ' + esc(c.dueDate) + '</span>' +
+          '<span class="mini">' + esc(c.unit) + ' · ' + esc(c.ownerName || 'ยังไม่มีผู้รับผิดชอบ') + '</span>' +
+          '<a class="badge" href="' + BASE_URL + '?page=capa&id=' + esc(c.capaId) + '">เปิดดู</a>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+
+    // ---------- คำขอดำเนินการกับเอกสาร ----------
+    if (d.dars.waitingList.length) {
+      html += '<div class="card"><h3>คำขอรออนุมัติ (' + d.dars.waiting + ')</h3>';
+      d.dars.waitingList.forEach(function (r) {
+        html += '<div class="list-row">' +
+          '<span class="key">' + esc(r.darNo) + '</span>' +
+          '<span class="grow">' + esc(r.typeLabel) + ' — ' +
+          esc(r.docCode ? r.docCode + ' ' + r.docTitle : r.docTitle) + '</span>' +
+          '<span class="mini">' + esc(r.unit) + ' · ขอโดย ' + esc(r.requesterName) +
+          ' · ' + esc(r.requestedAt) + '</span>' +
+          '<a class="badge" href="' + BASE_URL + '?page=dar&id=' + esc(r.darId) + '">พิจารณา</a>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+
+    // ---------- เอกสารรอลงนาม ----------
+    html += '<div class="card"><h3>เอกสารรอลงนาม (' + d.docs.waiting + ')</h3>';
+    if (!d.docs.waitingList.length) {
+      html += '<div class="mini">ไม่มีเอกสารค้างในสายอนุมัติ</div>';
+    } else {
+      d.docs.waitingList.forEach(function (x) {
+        html += '<div class="list-row">' +
+          '<span class="key">' + esc(x.docCode) + ' ฉบับที่ ' + esc(x.editionLabel) + '</span>' +
+          '<span class="grow">' + esc(x.title) + '</span>' +
+          '<span class="badge wait">' + esc(x.status) + '</span>' +
+          '<span class="mini">' + esc(x.unit) + '</span>' +
+          '<a class="badge" href="' + esc(x.signUrl) + '" target="_blank">หน้าลงนาม</a>' +
+          '</div>';
+      });
+    }
+    html += '</div>';
+
+    // ---------- ใกล้ถึงกำหนดทบทวน ----------
+    if (d.docs.dueForReview.length) {
+      html += '<div class="card"><h3>ใกล้ถึงกำหนดทบทวน (90 วัน)</h3>';
+      d.docs.dueForReview.forEach(function (r) {
+        html += '<div class="list-row">' +
+          '<span class="key">' + esc(r.docCode) + ' ฉบับที่ ' + esc(r.editionLabel) + '</span>' +
+          '<span class="grow">' + esc(r.docTitle) + '</span>' +
+          (r.overdue ? '<span class="badge rejected">เกินกำหนด</span>' : '') +
+          '<span class="mini">' + esc(r.unit) + ' · ทบทวน ' + esc(r.nextReviewDate) + '</span>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+
+    // ---------- รอบตรวจล่าสุด ----------
+    html += '<div class="card"><h3>รอบตรวจติดตามภายในล่าสุด</h3>';
+    if (!d.audits.recent.length) {
+      html += '<div class="mini">ยังไม่มีรอบตรวจ — ' +
+        '<a href="' + BASE_URL + '?page=audit">เปิดรอบตรวจแรก</a></div>';
+    } else {
+      d.audits.recent.forEach(function (a) {
+        html += '<div class="list-row">' +
+          '<span class="key">' + esc(a.auditNo) + '</span>' +
+          '<span class="grow">' + esc(a.unit) + ' · ' + esc(a.auditTypeLabel) + '</span>' +
+          '<span class="badge ' + (a.status === 'ปิดรอบ' ? 'approved' : 'wait') + '">' + esc(a.status) + '</span>' +
+          '<span class="mini">พบ ' + a.findingCount + ' ข้อ · NC ' + a.ncCount + ' ข้อ' +
+          (a.openNcCount ? ' (ยังไม่ปิด ' + a.openNcCount + ')' : '') + '</span>' +
+          '<a class="badge" href="' + BASE_URL + '?page=audit&id=' + esc(a.auditId) + '">เปิดดู</a>' +
+          '</div>';
+      });
+    }
+    html += '</div>';
+
+    document.getElementById('content').className = '';
+    document.getElementById('content').innerHTML = html;
+  }
+
+  function tile(n, label, cls) {
+    return '<div class="tile ' + (cls || '') + '"><div class="n">' + n + '</div><div class="k">' + esc(label) + '</div></div>';
+  }
+
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

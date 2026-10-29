@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="capa"
+      data-capa="<?= capaId ?>" data-token="<?= token ?>" data-finding="<?= findingId ?>">
+<div class="wrap wide">
+  <?!= include('Nav') ?>
+  <div id="content" class="msg wait">กำลังโหลด...</div>
+</div>
+
+<?!= include('SigPad') ?>
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+  var CAPA_ID = document.body.getAttribute('data-capa');
+  var TOKEN = document.body.getAttribute('data-token');
+  var FINDING_ID = document.body.getAttribute('data-finding');
+  var INIT = null;
+  var CAPA = null;
+  var sig = null;
+
+  google.script.run.withSuccessHandler(function (init) {
+    INIT = init;
+    if (FINDING_ID) renderNewFromFinding();
+    else if (CAPA_ID) loadCapa();
+    else renderList();
+  }).withFailureHandler(fail).getCapaInit();
+
+  function fail(err) {
+    document.getElementById('content').className = 'msg err';
+    document.getElementById('content').textContent = 'ทำรายการไม่สำเร็จ: ' + err.message;
+  }
+
+  function loadCapa() {
+    google.script.run.withSuccessHandler(function (c) {
+      CAPA = c;
+      renderCapa();
+    }).withFailureHandler(fail).getCapa(CAPA_ID, TOKEN);
+  }
+
+  // ============================================================
+  // รายการ CAPA
+  // ============================================================
+  function renderList() {
+    google.script.run.withSuccessHandler(function (list) {
+      var open = list.filter(function (c) { return c.status !== 'ปิด' && c.status !== 'ยกเลิก'; });
+      var overdue = open.filter(function (c) { return c.overdue; });
+
+      var html = '<h1>การแก้ไขและป้องกัน (CAPA)</h1>' +
+        '<div class="sub">ทุก NC จากการตรวจติดตามต้องมี CAPA — ปิดได้ต่อเมื่อทวนสอบแล้วว่าการแก้ไขได้ผลจริง</div>';
+
+      html += '<div class="tiles">' +
+        tile(open.length, 'เปิดอยู่', '') +
+        tile(overdue.length, 'เกินกำหนด', overdue.length ? 'alert' : '') +
+        tile(open.filter(function (c) { return c.status === 'รอทวนสอบประสิทธิผล'; }).length, 'รอทวนสอบ', '') +
+        tile(list.filter(function (c) { return c.status === 'ปิด'; }).length, 'ปิดแล้ว', '') +
+        '</div>';
+
+      html += '<div class="section-head"><h2>รายการทั้งหมด</h2><div class="spacer"></div>' +
+        '<button class="ghost" id="toggleNew">+ เปิด CAPA ใหม่ (ไม่ได้มาจาก audit)</button></div>';
+      html += '<div class="card" id="newCard" style="display:none">' + manualForm() + '</div>';
+
+      if (!list.length) {
+        html += '<div class="card">ยังไม่มี CAPA ในระบบ</div>';
+      } else {
+        html += '<div class="card" style="overflow-x:auto"><table class="list">' +
+          '<tr><th>เลขที่</th><th>แหล่งที่มา</th><th>หน่วยงาน</th><th>ปัญหา</th>' +
+          '<th>ผู้รับผิดชอบ</th><th>กำหนดเสร็จ</th><th>สถานะ</th><th></th></tr>';
+        list.forEach(function (c) {
+          html += '<tr>' +
+            '<td>' + esc(c.capaNo) + (c.findingNo ? '<div class="mini">' + esc(c.findingNo) + '</div>' : '') + '</td>' +
+            '<td>' + esc(c.sourceLabel) + '</td>' +
+            '<td>' + esc(c.unit) + '</td>' +
+            '<td>' + esc(c.problem.slice(0, 110)) + (c.problem.length > 110 ? '…' : '') + '</td>' +
+            '<td>' + esc(c.ownerName || '-') + '</td>' +
+            '<td>' + esc(c.dueDate || '-') +
+            (c.overdue ? ' <span class="badge rejected">เกินกำหนด</span>' : '') + '</td>' +
+            '<td><span class="badge ' + statusClass(c.status) + '">' + esc(c.status) + '</span></td>' +
+            '<td><a class="badge" href="' + BASE_URL + '?page=capa&id=' + esc(c.capaId) + '">เปิด</a>' +
+            (c.pdfUrl ? ' <a class="badge" href="' + esc(c.pdfUrl) + '" target="_blank">PDF</a>' : '') + '</td>' +
+            '</tr>';
+        });
+        html += '</table></div>';
+      }
+
+      show(html);
+      document.getElementById('toggleNew').onclick = function () {
+        var el = document.getElementById('newCard');
+        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+      };
+      document.getElementById('m-create').onclick = createManual;
+    }).withFailureHandler(fail).getCapaList({});
+  }
+
+  function manualForm() {
+    return '<h3>เปิด CAPA ใหม่</h3>' +
+      '<div class="hint" style="margin-bottom:10px">ใช้กับปัญหาที่ไม่ได้มาจากการตรวจติดตาม เช่น ข้อร้องเรียน ผล EQA ผิดปกติ ' +
+      'หรืองานที่ไม่สอดคล้องที่พบในงานประจำ (ถ้ามาจาก audit ให้กด "เปิด CAPA" ที่ข้อตรวจพบนั้นแทน เพื่อให้ผูกกันอัตโนมัติ)</div>' +
+      '<div class="row">' +
+      '<div class="field"><label for="m-source">แหล่งที่มา</label><select id="m-source">' +
+      INIT.sources.filter(function (s) { return s.value !== 'audit'; }).map(function (s) {
+        return '<option value="' + esc(s.value) + '">' + esc(s.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="field"><label for="m-unit">งาน / หน่วยงาน <span style="color:var(--danger)">*</span></label>' +
+      '<select id="m-unit">' + INIT.units.map(function (u) {
+        return '<option value="' + esc(u) + '">' + esc(u) + '</option>';
+      }).join('') + '</select></div>' +
+      '<div class="field"><label for="m-clause">ข้อกำหนดที่เกี่ยวข้อง</label><select id="m-clause">' +
+      '<option value="">— ไม่ระบุ —</option>' +
+      INIT.clauses.map(function (c) {
+        return '<option value="' + esc(c.no + ' ' + c.label) + '">' + esc(c.no + ' ' + c.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '</div>' +
+      '<div class="field"><label for="m-problem">ปัญหา / ความไม่สอดคล้องที่พบ <span style="color:var(--danger)">*</span></label>' +
+      '<textarea id="m-problem"></textarea></div>' +
+      '<div class="field"><label for="m-corr">การแก้ไขเฉพาะหน้าที่ทำไปแล้ว (Correction)</label>' +
+      '<div class="hint">แก้ของที่พังตรงหน้า — คนละเรื่องกับการแก้ที่สาเหตุราก</div>' +
+      '<textarea id="m-corr"></textarea></div>' +
+      '<div class="row">' +
+      '<div class="field"><label for="m-owner">ผู้รับผิดชอบ</label><input type="text" id="m-owner"></div>' +
+      '<div class="field"><label for="m-ownermail">อีเมลผู้รับผิดชอบ</label><input type="text" id="m-ownermail"></div>' +
+      '<div class="field"><label for="m-due">กำหนดแล้วเสร็จ</label><input type="date" id="m-due"></div>' +
+      '</div>' +
+      '<button class="act" id="m-create">เปิด CAPA</button>' +
+      '<div class="msg" id="m-msg"></div>';
+  }
+
+  function createManual() {
+    var btn = document.getElementById('m-create');
+    btn.disabled = true;
+    setMsg('m-msg', 'กำลังบันทึก...', 'wait');
+    google.script.run.withSuccessHandler(function (res) {
+      location.href = BASE_URL + '?page=capa&id=' + res.capaId;
+    }).withFailureHandler(function (err) {
+      btn.disabled = false;
+      setMsg('m-msg', err.message, 'err');
+    }).createCapa({
+      source: document.getElementById('m-source').value,
+      unit: document.getElementById('m-unit').value,
+      clause: document.getElementById('m-clause').value,
+      problem: document.getElementById('m-problem').value,
+      immediateCorrection: document.getElementById('m-corr').value,
+      ownerName: document.getElementById('m-owner').value,
+      ownerEmail: document.getElementById('m-ownermail').value,
+      dueDate: document.getElementById('m-due').value
+    });
+  }
+
+  // ============================================================
+  // เปิด CAPA จากข้อตรวจพบ
+  // ============================================================
+  function renderNewFromFinding() {
+    google.script.run.withSuccessHandler(function (f) {
+      var html = '<div class="crumb mini"><a href="' + BASE_URL + '?page=audit&id=' + esc(f.auditId) + '">← กลับไปรอบตรวจ ' + esc(f.auditNo) + '</a></div>' +
+        '<h1>เปิด CAPA จากข้อตรวจพบ ' + esc(f.findingNo) + '</h1>' +
+        '<div class="sub">' + esc(f.auditNo) + ' · ' + esc(f.unit) + ' · ' + esc(f.gradeLabel) + '</div>' +
+        '<div class="card">' +
+        '<div class="field"><label for="n-problem">ปัญหา / ความไม่สอดคล้องที่พบ</label>' +
+        '<div class="hint">ดึงมาจากข้อตรวจพบ แก้ไขถ้อยคำได้</div>' +
+        '<textarea id="n-problem" style="min-height:110px">' + esc(f.problem) + '</textarea></div>' +
+        '<div class="field"><label for="n-corr">การแก้ไขเฉพาะหน้าที่ทำไปแล้ว (Correction)</label>' +
+        '<textarea id="n-corr"></textarea></div>' +
+        '<div class="row">' +
+        '<div class="field"><label for="n-owner">ผู้รับผิดชอบ <span style="color:var(--danger)">*</span></label>' +
+        '<input type="text" id="n-owner"></div>' +
+        '<div class="field"><label for="n-ownermail">อีเมลผู้รับผิดชอบ</label>' +
+        '<div class="hint">ระบบส่งลิงก์แบบฟอร์ม CAPA ไปให้</div>' +
+        '<input type="text" id="n-ownermail"></div>' +
+        '<div class="field"><label for="n-due">กำหนดแล้วเสร็จ</label>' +
+        '<div class="hint">ค่าตั้งต้นมาจากระดับ NC</div>' +
+        '<input type="date" id="n-due" value="' + esc(f.suggestedDue) + '"></div>' +
+        '</div>' +
+        '<button class="act" id="n-create">เปิด CAPA</button>' +
+        '<div class="msg" id="n-msg"></div></div>';
+      show(html);
+      document.getElementById('n-create').onclick = function () {
+        var btn = this;
+        btn.disabled = true;
+        setMsg('n-msg', 'กำลังบันทึก...', 'wait');
+        google.script.run.withSuccessHandler(function (res) {
+          location.href = BASE_URL + '?page=capa&id=' + res.capaId;
+        }).withFailureHandler(function (err) {
+          btn.disabled = false;
+          setMsg('n-msg', err.message, 'err');
+        }).createCapa({
+          source: 'audit',
+          findingId: f.findingId,
+          unit: f.unit,
+          clause: f.clause,
+          problem: document.getElementById('n-problem').value,
+          immediateCorrection: document.getElementById('n-corr').value,
+          ownerName: document.getElementById('n-owner').value,
+          ownerEmail: document.getElementById('n-ownermail').value,
+          dueDate: document.getElementById('n-due').value,
+          relatedDocCode: f.relatedDocCode
+        });
+      };
+    }).withFailureHandler(fail).getFindingForCapa(FINDING_ID);
+  }
+
+  // ============================================================
+  // รายละเอียด CAPA
+  // ============================================================
+  function renderCapa() {
+    var c = CAPA;
+    var closed = (c.status === 'ปิด' || c.status === 'ยกเลิก');
+
+    var html = '<div class="crumb mini no-print"><a href="' + BASE_URL + '?page=capa">← CAPA ทั้งหมด</a></div>' +
+      '<h1>' + esc(c.capaNo) + '</h1>' +
+      '<div class="sub">' + esc(c.sourceLabel) + ' · ' + esc(c.unit) +
+      ' <span class="badge ' + statusClass(c.status) + '">' + esc(c.status) + '</span>' +
+      (c.overdue ? ' <span class="badge rejected">เกินกำหนด ' + esc(c.dueDateThai) + '</span>' : '') + '</div>';
+
+    html += '<div class="stepper no-print">' +
+      step('1 ระบุปัญหา', true) +
+      step('2 วิเคราะห์สาเหตุราก', !!c.rootCause) +
+      step('3 ดำเนินการแก้ไข', !!c.actionResult) +
+      step('4 ทวนสอบประสิทธิผล', c.status === 'ปิด') +
+      '</div>';
+
+    if (c.finding) {
+      html += '<div class="card"><h3>ที่มา: ข้อตรวจพบ ' + esc(c.finding.findingNo) + '</h3>' +
+        '<table class="meta-table">' +
+        row('รอบตรวจ', c.finding.auditNo) +
+        row('ข้อกำหนด', c.finding.clause) +
+        row('ระดับ', c.finding.gradeLabel) +
+        row('สิ่งที่ตรวจพบ', c.finding.title) +
+        (c.finding.evidence ? row('หลักฐาน', c.finding.evidence) : '') +
+        '</table>' +
+        '<div class="mini" style="margin-top:8px"><a href="' + BASE_URL + '?page=audit&id=' + esc(c.finding.auditId) + '">เปิดรอบตรวจ</a></div>' +
+        '</div>';
+    }
+
+    html += '<div class="card"><h3>ข้อมูล CAPA</h3><table class="meta-table">' +
+      row('เลขที่ CAPA', c.capaNo) +
+      row('แหล่งที่มา', c.sourceLabel) +
+      row('หน่วยงาน', c.unit) +
+      row('ข้อกำหนดที่เกี่ยวข้อง', c.clause) +
+      row('ผู้รับผิดชอบ', c.ownerName + (c.ownerEmail ? ' (' + c.ownerEmail + ')' : '')) +
+      row('วันที่เปิด', c.createdAt) +
+      row('กำหนดแล้วเสร็จ', c.dueDateThai) +
+      row('กำหนดทวนสอบประสิทธิผล', c.effectivenessDueThai) +
+      row('เอกสารที่ออก/แก้ไขจาก CAPA นี้', c.relatedDocCode) +
+      '</table>' +
+      '<div style="margin-top:12px"><label>1. ปัญหา / ความไม่สอดคล้องที่พบ</label>' +
+      '<div class="note-box">' + esc(c.problem) + '</div></div>' +
+      '<div style="margin-top:10px"><label>2. การแก้ไขเฉพาะหน้า (Correction)</label>' +
+      '<div class="note-box">' + esc(c.immediateCorrection || '-') + '</div></div>' +
+      '</div>';
+
+    // ---------- ขั้นวิเคราะห์ ----------
+    if (!closed) {
+      html += '<div class="card no-print"><h3>3–4. วิเคราะห์สาเหตุรากและวางแผนแก้ไข</h3>' +
+        '<div class="hint" style="margin-bottom:10px">แก้เฉพาะหน้าไม่นับเป็น corrective action — ต้องระบุได้ว่า ' +
+        '"ทำไมถึงเกิด" แล้วแก้ที่จุดนั้น ไม่งั้นปัญหาเดิมกลับมาอีก</div>' +
+        '<div class="row">' +
+        '<div class="field" style="flex:1 1 260px"><label for="c-method">วิธีวิเคราะห์สาเหตุราก</label>' +
+        '<select id="c-method">' + INIT.methods.map(function (m) {
+          return '<option value="' + esc(m) + '"' + (m === c.rootCauseMethod ? ' selected' : '') + '>' + esc(m) + '</option>';
+        }).join('') + '</select></div>' +
+        '<div class="field" style="flex:1 1 200px"><label for="c-due">กำหนดแล้วเสร็จ</label>' +
+        '<input type="date" id="c-due" value="' + esc(c.dueDate) + '"></div>' +
+        '</div>' +
+        '<div class="field"><label for="c-root">สาเหตุราก (Root cause) <span style="color:var(--danger)">*</span></label>' +
+        '<textarea id="c-root">' + esc(c.rootCause) + '</textarea></div>' +
+        '<div class="field"><label for="c-plan">แนวทางแก้ไขที่สาเหตุราก (Corrective action) <span style="color:var(--danger)">*</span></label>' +
+        '<textarea id="c-plan">' + esc(c.actionPlan) + '</textarea></div>' +
+        '<div class="row">' +
+        '<div class="field"><label for="c-owner">ผู้รับผิดชอบ</label>' +
+        '<input type="text" id="c-owner" value="' + esc(c.ownerName) + '"></div>' +
+        '<div class="field"><label for="c-ownermail">อีเมลผู้รับผิดชอบ</label>' +
+        '<input type="text" id="c-ownermail" value="' + esc(c.ownerEmail) + '"></div>' +
+        '</div>' +
+        '<button class="act" id="c-save">บันทึกการวิเคราะห์</button>' +
+        '<div class="msg" id="c-msg"></div></div>';
+    } else {
+      html += '<div class="card"><h3>3–4. สาเหตุรากและแนวทางแก้ไข</h3>' +
+        '<div><label>สาเหตุราก (วิธี: ' + esc(c.rootCauseMethod || '-') + ')</label>' +
+        '<div class="note-box">' + esc(c.rootCause || '-') + '</div></div>' +
+        '<div style="margin-top:10px"><label>แนวทางแก้ไขที่สาเหตุราก</label>' +
+        '<div class="note-box">' + esc(c.actionPlan || '-') + '</div></div></div>';
+    }
+
+    // ---------- ขั้นรายงานผล ----------
+    if (!closed && c.rootCause) {
+      html += '<div class="card no-print"><h3>5. รายงานผลการดำเนินการ</h3>' +
+        '<div class="field"><label for="c-result">สรุปสิ่งที่ทำจริงและหลักฐาน <span style="color:var(--danger)">*</span></label>' +
+        '<textarea id="c-result">' + esc(c.actionResult) + '</textarea></div>' +
+        '<div class="row">' +
+        '<div class="field" style="flex:1 1 220px"><label for="c-effdue">กำหนดทวนสอบประสิทธิผล</label>' +
+        '<div class="hint">ค่าตั้งต้น ' + INIT.effectivenessDays + ' วันหลังแก้ไขเสร็จ</div>' +
+        '<input type="date" id="c-effdue" value="' + esc(c.effectivenessDue) + '"></div>' +
+        '<div class="field" style="flex:1 1 220px"><label for="c-doc">เลขที่เอกสารที่ออก/แก้ไขจาก CAPA นี้</label>' +
+        '<div class="hint">เช่น WI ฉบับใหม่ที่แก้ตามแนวทางนี้</div>' +
+        '<input type="text" id="c-doc" value="' + esc(c.relatedDocCode) + '"></div>' +
+        '</div>' +
+        '<button class="act" id="c-report">ส่งให้ทวนสอบประสิทธิผล</button>' +
+        '<div class="msg" id="c-msg2"></div></div>';
+    } else if (c.actionResult) {
+      html += '<div class="card"><h3>5. ผลการดำเนินการ (' + esc(c.actionDoneAt || '-') + ')</h3>' +
+        '<div class="note-box">' + esc(c.actionResult) + '</div></div>';
+    }
+
+    // ---------- ขั้นทวนสอบ ----------
+    if (c.status === 'รอทวนสอบประสิทธิผล') {
+      html += '<div class="card no-print"><h3>6. ทวนสอบประสิทธิผล (' + esc(c.qmTitle) + ')</h3>' +
+        '<div class="hint" style="margin-bottom:10px">ปิด CAPA ได้ต่อเมื่อมีหลักฐานว่าปัญหาเดิมไม่กลับมาอีก ' +
+        'เช่น ตรวจบันทึกย้อนหลัง ผล QC ช่วงถัดมา หรือสุ่มสังเกตการปฏิบัติ</div>' +
+        '<div class="row">' +
+        '<div class="field"><label for="v-name">ชื่อผู้ทวนสอบ <span style="color:var(--danger)">*</span></label>' +
+        '<input type="text" id="v-name" value="' + esc(c.me.name || '') + '"></div>' +
+        '</div>' +
+        '<div class="field"><label for="v-result">หลักฐาน / ผลการทวนสอบ <span style="color:var(--danger)">*</span></label>' +
+        '<textarea id="v-result"></textarea></div>' +
+        '<div class="field"><label for="v-comment">ความเห็นเพิ่มเติม</label><textarea id="v-comment"></textarea></div>' +
+        '<div class="field"><label>ลายเซ็นอิเล็กทรอนิกส์ <span style="color:var(--danger)">*</span></label>' +
+        '<div id="sigHost"></div></div>' +
+        '<div class="field"><label for="v-newdue">ถ้าไม่ผ่าน — กำหนดแล้วเสร็จใหม่</label>' +
+        '<input type="date" id="v-newdue"></div>' +
+        '<button class="act" id="v-pass">ผ่าน / ปิด CAPA</button>' +
+        '<button class="act danger" id="v-fail">ไม่ผ่าน — ส่งกลับไปแก้</button>' +
+        '<div class="msg" id="v-msg"></div></div>';
+    } else if (c.effectivenessResult) {
+      html += '<div class="card"><h3>6. การทวนสอบประสิทธิผล</h3>' +
+        '<div class="note-box">' + esc(c.effectivenessResult) + '</div>' +
+        '<div class="sigs">' + sigBlock(c.qmTitle, c.verifierName, c.verifiedAt, c.verifierSignature, c.verifierComment) + '</div>' +
+        (c.pdfUrl ? '<div style="margin-top:12px"><a href="' + esc(c.pdfUrl) + '" target="_blank">เปิดแบบฟอร์ม CAPA (PDF)</a></div>' : '') +
+        '</div>';
+    }
+
+    // ---------- ผูกกับเอกสาร ----------
+    html += '<div class="card no-print"><h3>เอกสารที่ต้องแก้ตาม CAPA นี้</h3>' +
+      '<div class="hint" style="margin-bottom:8px">CAPA ส่วนใหญ่จบด้วยการแก้ WI แล้วออกฉบับใหม่ — ' +
+      'ทางที่ถูกคือเปิดใบขออนุมัติ (DAR) ก่อน แล้วเส้น CAPA → DAR → เอกสารจะเกิดเอง ' +
+      'ส่วนช่องด้านล่างไว้ผูกย้อนหลังกับเอกสารที่ออกไปก่อนมีระบบ DAR</div>' +
+      '<div style="margin-bottom:12px"><a class="badge" style="padding:7px 15px;font-size:16px" href="' +
+      BASE_URL + '?page=dar&capa=' + esc(c.capaId) + '">เปิดใบขออนุมัติแก้เอกสาร (DAR) จาก CAPA นี้</a></div>' +
+      '<div class="row"><div class="field" style="flex:1 1 240px">' +
+      '<input type="text" id="l-doc" value="' + esc(c.relatedDocCode) + '" placeholder="เช่น WI-MIC-012"></div>' +
+      '<div style="padding-top:2px"><button class="ghost" id="l-go">ผูกกับเลขเอกสารนี้</button></div></div>' +
+      '<div class="msg" id="l-msg"></div></div>';
+
+    show(html);
+    wireCapa();
+  }
+
+  function wireCapa() {
+    var save = document.getElementById('c-save');
+    if (save) {
+      save.onclick = function () {
+        save.disabled = true;
+        setMsg('c-msg', 'กำลังบันทึก...', 'wait');
+        google.script.run.withSuccessHandler(function () { loadCapa(); })
+          .withFailureHandler(function (err) {
+            save.disabled = false;
+            setMsg('c-msg', err.message, 'err');
+          })
+          .saveCapaAnalysis(CAPA_ID, TOKEN, {
+            rootCause: document.getElementById('c-root').value,
+            rootCauseMethod: document.getElementById('c-method').value,
+            actionPlan: document.getElementById('c-plan').value,
+            ownerName: document.getElementById('c-owner').value,
+            ownerEmail: document.getElementById('c-ownermail').value,
+            dueDate: document.getElementById('c-due').value
+          });
+      };
+    }
+
+    var report = document.getElementById('c-report');
+    if (report) {
+      report.onclick = function () {
+        report.disabled = true;
+        setMsg('c-msg2', 'กำลังบันทึก...', 'wait');
+        google.script.run.withSuccessHandler(function () { loadCapa(); })
+          .withFailureHandler(function (err) {
+            report.disabled = false;
+            setMsg('c-msg2', err.message, 'err');
+          })
+          .reportCapaAction(CAPA_ID, TOKEN, {
+            actionResult: document.getElementById('c-result').value,
+            effectivenessDue: document.getElementById('c-effdue').value,
+            relatedDocCode: document.getElementById('c-doc').value
+          });
+      };
+    }
+
+    if (document.getElementById('v-pass')) {
+      sig = WiSig.mount('sigHost');
+      document.getElementById('v-pass').onclick = function () { verify(true); };
+      document.getElementById('v-fail').onclick = function () { verify(false); };
+    }
+
+    var link = document.getElementById('l-go');
+    if (link) {
+      link.onclick = function () {
+        var code = document.getElementById('l-doc').value.trim();
+        if (!code) { setMsg('l-msg', 'กรอกเลขที่เอกสารก่อน', 'err'); return; }
+        link.disabled = true;
+        setMsg('l-msg', 'กำลังค้นหา...', 'wait');
+        google.script.run.withSuccessHandler(function (res) {
+          link.disabled = false;
+          setMsg('l-msg', 'ผูกกับ ' + res.docCode + ' Rev.' + res.revision + ' (' + res.status + ') แล้ว', 'ok');
+        }).withFailureHandler(function (err) {
+          link.disabled = false;
+          setMsg('l-msg', err.message, 'err');
+        }).linkCapaToDocument(CAPA_ID, code);
+      };
+    }
+  }
+
+  function verify(pass) {
+    var name = document.getElementById('v-name').value.trim();
+    var result = document.getElementById('v-result').value.trim();
+    if (!name) { setMsg('v-msg', 'กรุณากรอกชื่อผู้ทวนสอบ', 'err'); return; }
+    if (!result) { setMsg('v-msg', 'กรุณาบันทึกหลักฐาน/ผลการทวนสอบ', 'err'); return; }
+    if (!sig.isSigned()) { setMsg('v-msg', 'กรุณาเซ็นลายเซ็นก่อน', 'err'); return; }
+    document.getElementById('v-pass').disabled = true;
+    document.getElementById('v-fail').disabled = true;
+    setMsg('v-msg', 'กำลังบันทึก...', 'wait');
+    google.script.run.withSuccessHandler(function () { loadCapa(); })
+      .withFailureHandler(function (err) {
+        document.getElementById('v-pass').disabled = false;
+        document.getElementById('v-fail').disabled = false;
+        setMsg('v-msg', err.message, 'err');
+      })
+      .verifyCapa(CAPA_ID, TOKEN, {
+        verifierName: name,
+        effectivenessResult: result,
+        comment: document.getElementById('v-comment').value,
+        signature: sig.dataUrl(),
+        pass: pass,
+        newDueDate: document.getElementById('v-newdue').value
+      });
+  }
+
+  // ---------- helpers ----------
+  function statusClass(s) {
+    if (s === 'ปิด') return 'approved';
+    if (s === 'ยกเลิก') return 'obsolete';
+    if (s === 'รอทวนสอบประสิทธิผล') return 'wait';
+    return 'wait';
+  }
+  function tile(n, label, cls) {
+    return '<div class="tile ' + (cls || '') + '"><div class="n">' + n + '</div><div class="k">' + esc(label) + '</div></div>';
+  }
+  function step(label, done) {
+    return '<span class="' + (done ? 'done' : '') + '">' + esc(label) + '</span>';
+  }
+  function row(k, v) {
+    return '<tr><th>' + esc(k) + '</th><td>' + esc(v || '-') + '</td></tr>';
+  }
+  function sigBlock(role, name, at, img, comment) {
+    return '<div class="sig">' +
+      (comment ? '<div class="sig-note">ความเห็น: ' + esc(comment) + '</div>' : '') +
+      (img ? '<img src="' + esc(img) + '" alt="">' : '<div class="sig-blank"></div>') +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">(' + esc(name || '.....................') + ')</div>' +
+      '<div class="sig-title">' + esc(role) + '</div>' +
+      '<div class="sig-date">วันที่ ' + esc(at || '............') + '</div></div>';
+  }
+  function show(html) {
+    var el = document.getElementById('content');
+    el.className = '';
+    el.innerHTML = html;
+  }
+  function setMsg(id, text, cls) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+  }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

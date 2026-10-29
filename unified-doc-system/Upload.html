@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="upload" data-dar="<?= darId ?>">
+<div class="wrap">
+  <?!= include('Nav') ?>
+
+  <h1>ส่งเอกสารคุณภาพขอลงนาม</h1>
+  <div class="sub">
+    แนบไฟล์เอกสาร (WI / SP / ED / LB) กรอกข้อมูลควบคุมเอกสาร แล้วเซ็นในฐานะผู้จัดทำ
+    ระบบจะส่งอีเมลให้ผู้ทบทวนและผู้อนุมัติลงนามต่อตามลำดับ
+  </div>
+
+  <div id="darBanner"></div>
+  <div id="loading" class="msg wait">กำลังโหลดข้อมูลตั้งต้น...</div>
+
+  <form id="docForm" style="display:none">
+    <div class="card">
+      <h3>1. ข้อมูลควบคุมเอกสาร</h3>
+      <div class="row">
+        <div class="field" style="flex:1 1 260px">
+          <label for="docCode">เลขที่เอกสาร <span style="color:var(--danger)">*</span></label>
+          <div class="hint">เช่น WI-MB-08 — ถ้าเลขนี้มีอยู่แล้วระบบจะถือเป็นการเปลี่ยนแปลงเอกสารเดิม</div>
+          <input type="text" id="docCode" required autocomplete="off">
+          <div id="codeInfo" class="mini" style="margin-top:6px"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1 1 260px">
+          <label for="changeKind">ลักษณะการเปลี่ยนแปลง <span style="color:var(--danger)">*</span></label>
+          <div class="hint">ตรงกับตาราง "บันทึกประวัติการใช้งาน การทบทวน และ การแก้ไขเอกสาร" ในตัวเอกสาร</div>
+          <select id="changeKind"></select>
+        </div>
+        <div class="field" style="flex:1 1 120px">
+          <label for="edition">ฉบับที่ <span style="color:var(--danger)">*</span></label>
+          <div class="hint">ตัวเลขหรือตัวอักษร เช่น 1, 2, C, D</div>
+          <input type="text" id="edition" class="mono" autocomplete="off">
+        </div>
+        <div class="field" style="flex:1 1 120px">
+          <label for="amendment">แก้ไขครั้งที่</label>
+          <div class="hint">0 = ยังไม่มีการแก้ไข</div>
+          <input type="number" id="amendment" min="0" max="99" value="0">
+        </div>
+        <div class="field" style="flex:1 1 120px">
+          <label>จะบันทึกเป็น</label>
+          <div class="hint">ตามที่พิมพ์บนหัวเอกสาร</div>
+          <input type="text" id="editionPreview" class="mono" value="-" readonly style="background:#f3f4f6">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="docTitle">ชื่อเอกสาร <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="docTitle" required autocomplete="off">
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="docType">ประเภทเอกสาร <span style="color:var(--danger)">*</span></label>
+          <select id="docType" required></select>
+        </div>
+        <div class="field">
+          <label for="unit">งาน / หน่วยงาน <span style="color:var(--danger)">*</span></label>
+          <select id="unit" required></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="effectiveDate">วันที่ประกาศใช้</label>
+          <div class="hint">เว้นว่างได้ — ระบบจะใช้วันที่อนุมัติ</div>
+          <input type="date" id="effectiveDate">
+        </div>
+        <div class="field">
+          <label for="reviewCycle">รอบทบทวน (เดือน)</label>
+          <div class="hint">ใช้คำนวณกำหนดทบทวนครั้งถัดไป</div>
+          <input type="number" id="reviewCycle" min="0" max="120" step="1">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:1 1 240px">
+          <label for="controlType">เอกสารฉบับนี้เป็น</label>
+          <div class="hint">ตามช่องในหัวเอกสาร</div>
+          <select id="controlType"></select>
+        </div>
+        <div class="field" style="flex:1 1 160px">
+          <label for="copyNo">สำเนาฉบับที่</label>
+          <div class="hint">เว้นว่างได้ถ้าเป็นต้นฉบับ</div>
+          <input type="text" id="copyNo" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:2 1 320px">
+          <label for="changeNote">สาระสำคัญของการจัดทำ / แก้ไข</label>
+          <div class="hint">ฉบับแก้ไขควรระบุว่าแก้อะไรจากฉบับก่อน (ข้อมูลนี้พิมพ์ลงใบปกควบคุมเอกสาร)</div>
+          <textarea id="changeNote"></textarea>
+        </div>
+        <div class="field" style="flex:1 1 160px">
+          <label for="changePages">หน้าที่แก้ไข</label>
+          <div class="hint">เช่น 3, 4-5, ทุกหน้า</div>
+          <input type="text" id="changePages" autocomplete="off">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>2. ไฟล์เอกสาร</h3>
+      <div class="field">
+        <label for="docFile">แนบไฟล์ <span style="color:var(--danger)">*</span></label>
+        <div class="hint" id="fileHint">PDF / Word / Excel / PowerPoint / รูปภาพ</div>
+        <input type="file" id="docFile" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg" required>
+        <div id="fileInfo" class="mini" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>3. ลงนามผู้จัดทำ</h3>
+      <div class="row">
+        <div class="field" style="flex:1 1 280px">
+          <label for="authorName">ชื่อ-นามสกุล ผู้จัดทำ <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="authorName" required autocomplete="off">
+        </div>
+        <div class="field" style="flex:1 1 280px">
+          <label for="authorEmail">อีเมลผู้จัดทำ <span style="color:var(--danger)">*</span></label>
+          <div class="hint">ใช้แจ้งผลการลงนามกลับ และใช้แชร์ไฟล์ฉบับที่อนุมัติแล้ว</div>
+          <input type="text" id="authorEmail" required autocomplete="off">
+          <div class="mini" id="authorEmailNote" style="margin-top:6px"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>ลายเซ็นอิเล็กทรอนิกส์ <span style="color:var(--danger)">*</span></label>
+        <div id="sigHost"></div>
+      </div>
+
+      <button type="submit" id="submitBtn">ส่งเอกสารขอลงนาม</button>
+      <div id="statusMsg" class="msg"></div>
+    </div>
+  </form>
+
+  <div id="doneCard" class="card" style="display:none">
+    <h3>ส่งเอกสารเรียบร้อย</h3>
+    <div id="doneBody"></div>
+    <button type="button" class="ghost" onclick="location.reload()" style="margin-top:12px">ส่งเอกสารฉบับถัดไป</button>
+  </div>
+</div>
+
+<?!= include('SigPad') ?>
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+  var DAR_ID = document.body.getAttribute('data-dar') || '';
+  var sig = null;
+  var INIT = null;
+  var DAR = null;
+  var selectedFile = null;
+
+  google.script.run.withSuccessHandler(onInit).withFailureHandler(onInitFail).getUploadInit();
+
+  function onInitFail(err) {
+    document.getElementById('loading').className = 'msg err';
+    document.getElementById('loading').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + err.message;
+  }
+
+  function onInit(init) {
+    INIT = init;
+    var typeSel = document.getElementById('docType');
+    init.docTypes.forEach(function (t) {
+      var o = document.createElement('option');
+      o.value = t.value;
+      o.textContent = t.label;
+      typeSel.appendChild(o);
+    });
+
+    var unitSel = document.getElementById('unit');
+    unitSel.appendChild(new Option('— เลือกงาน —', ''));
+    init.units.forEach(function (u) { unitSel.appendChild(new Option(u, u)); });
+
+    var kindSel = document.getElementById('changeKind');
+    init.changeKinds.forEach(function (k) { kindSel.appendChild(new Option(k.label, k.value)); });
+    kindSel.addEventListener('change', applyKind);
+
+    var ctrlSel = document.getElementById('controlType');
+    init.controlTypes.forEach(function (c) { ctrlSel.appendChild(new Option(c.label, c.value)); });
+
+    ['edition', 'amendment'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', drawEditionPreview);
+    });
+    document.getElementById('edition').value = '1';
+    drawEditionPreview();
+
+    document.getElementById('reviewCycle').value = init.defaultReviewCycle;
+    document.getElementById('fileHint').textContent =
+      'PDF / Word / Excel / PowerPoint / รูปภาพ — ไม่เกิน ' + init.maxFileMB + ' MB';
+    if (init.userEmail) {
+      document.getElementById('authorEmail').value = init.userEmail;
+      document.getElementById('authorEmailNote').textContent = 'ตรวจพบบัญชีที่ลงชื่อเข้าใช้อยู่';
+    }
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('docForm').style.display = 'block';
+    sig = WiSig.mount('sigHost');
+
+    if (DAR_ID) loadDar();
+  }
+
+  /** เปิดจากลิงก์ในใบขออนุมัติ — เติมข้อมูลจากคำขอแล้วล็อกช่องที่คำขอกำหนดไว้ */
+  function loadDar() {
+    google.script.run.withSuccessHandler(function (d) {
+      DAR = d;
+      document.getElementById('darBanner').innerHTML =
+        '<div class="warnbar">จัดทำตามใบขออนุมัติ <b>' + escapeHtml(d.darNo) + '</b> (' +
+        escapeHtml(d.typeLabel) + ') — อนุมัติโดย ' + escapeHtml(d.approverName) + ' เมื่อ ' +
+        escapeHtml(d.approvedAt) + ' · <a href="' + BASE_URL + '?page=dar&id=' + escapeHtml(d.darId) +
+        '">ดูใบคำขอ</a><div class="mini" style="margin-top:4px">เลขที่เอกสาร ประเภท และหน่วยงาน ' +
+        'ถูกล็อกตามคำขอ แก้ไขไม่ได้</div></div>';
+
+      if (d.docCode) {
+        document.getElementById('docCode').value = d.docCode;
+        document.getElementById('docCode').readOnly = true;
+      }
+      if (d.docTitle) document.getElementById('docTitle').value = d.docTitle;
+      if (d.docType) document.getElementById('docType').value = d.docType;
+      if (d.unit) document.getElementById('unit').value = d.unit;
+      document.getElementById('docType').disabled = true;
+      document.getElementById('unit').disabled = true;
+      if (d.reason && !document.getElementById('changeNote').value) {
+        document.getElementById('changeNote').value = d.reason;
+      }
+      if (d.requesterName) document.getElementById('authorName').value = d.requesterName;
+      if (d.requesterEmail) document.getElementById('authorEmail').value = d.requesterEmail;
+      document.getElementById('docCode').dispatchEvent(new Event('blur'));
+    }).withFailureHandler(function (err) {
+      document.getElementById('darBanner').innerHTML =
+        '<div class="warnbar">เปิดใบขออนุมัติไม่ได้: ' + escapeHtml(err.message) + '</div>';
+      DAR_ID = '';
+    }).getDarForUpload(DAR_ID);
+  }
+
+  // ---------- เลขเอกสาร: ดูฉบับปัจจุบัน แล้วเติมฉบับที่ถัดไปให้ ----------
+  var LOOKUP = null;   // ผลตรวจเลขเอกสารล่าสุด ใช้เติมค่าตามลักษณะการเปลี่ยนแปลง
+
+  document.getElementById('docCode').addEventListener('blur', function () {
+    var code = this.value.trim();
+    var info = document.getElementById('codeInfo');
+    if (!code) { info.textContent = ''; LOOKUP = null; return; }
+    info.textContent = 'กำลังตรวจเลขเอกสาร...';
+    google.script.run.withSuccessHandler(function (res) {
+      LOOKUP = res;
+      if (!res.exists) {
+        info.innerHTML = '<span style="color:var(--ok)">เลขใหม่ — จะบันทึกเป็นฉบับแรก</span>';
+        setKind('new');
+        document.getElementById('edition').value = '1';
+        document.getElementById('amendment').value = 0;
+        drawEditionPreview();
+        return;
+      }
+      if (res.pending) {
+        info.innerHTML = '<span style="color:var(--danger)">มีฉบับที่ ' + escapeHtml(res.pending.editionLabel) +
+          ' อยู่ในสถานะ "' + escapeHtml(res.pending.status) + '" — ต้องรอให้ฉบับนั้นเสร็จสิ้นก่อน</span>';
+        return;
+      }
+      var c = res.current;
+      info.innerHTML = 'ฉบับปัจจุบัน: <b>ฉบับที่ ' + escapeHtml(c.editionLabel) + '</b> "' + escapeHtml(c.title) + '" (' +
+        escapeHtml(c.status) + (c.effectiveDate ? ' · ประกาศใช้ ' + escapeHtml(c.effectiveDate) : '') + ')' +
+        (c.reviewCount ? ' · ทบทวนมาแล้ว ' + c.reviewCount + ' ครั้ง' : '');
+      if (!document.getElementById('docTitle').value) document.getElementById('docTitle').value = c.title;
+      if (c.docType) document.getElementById('docType').value = c.docType;
+      if (c.unit) document.getElementById('unit').value = c.unit;
+      setKind('amend');
+      applyKind();
+    }).withFailureHandler(function (err) {
+      info.innerHTML = '<span class="err">ตรวจเลขเอกสารไม่สำเร็จ: ' + escapeHtml(err.message) + '</span>';
+    }).lookupDocCode(code);
+  });
+
+  function setKind(v) {
+    var sel = document.getElementById('changeKind');
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === v) { sel.selectedIndex = i; return; }
+    }
+  }
+
+  /** เติมฉบับที่/แก้ไขครั้งที่ตามลักษณะการเปลี่ยนแปลงที่เลือก (แก้ทับได้เสมอ) */
+  function applyKind() {
+    var kind = document.getElementById('changeKind').value;
+    var ed = document.getElementById('edition');
+    var am = document.getElementById('amendment');
+    if (!LOOKUP || !LOOKUP.exists) {
+      ed.value = ed.value || '1';
+      am.value = 0;
+    } else if (LOOKUP.suggest && LOOKUP.suggest[kind]) {
+      ed.value = LOOKUP.suggest[kind].edition;
+      am.value = LOOKUP.suggest[kind].amendment;
+    }
+    am.readOnly = (kind === 'review');
+    drawEditionPreview();
+  }
+
+  function drawEditionPreview() {
+    var e = String(document.getElementById('edition').value || '').trim();
+    var a = Number(document.getElementById('amendment').value) || 0;
+    document.getElementById('editionPreview').value = e ? (a > 0 ? e + '/' + a : e) : '-';
+  }
+
+  // ---------- ไฟล์ ----------
+  document.getElementById('docFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    var info = document.getElementById('fileInfo');
+    selectedFile = null;
+    if (!f) { info.textContent = ''; return; }
+    var mb = f.size / (1024 * 1024);
+    if (mb > INIT.maxFileMB) {
+      info.innerHTML = '<span style="color:var(--danger)">ไฟล์ใหญ่ ' + mb.toFixed(1) +
+        ' MB เกินเพดาน ' + INIT.maxFileMB + ' MB</span>';
+      this.value = '';
+      return;
+    }
+    selectedFile = f;
+    info.textContent = f.name + ' · ' + mb.toFixed(2) + ' MB';
+  });
+
+  /** อ่านไฟล์เป็น base64 — google.script.run ส่ง File object ไม่ได้ ต้องแปลงเป็นสตริงก่อน */
+  function readFileBase64(file, cb, onErr) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var parts = String(ev.target.result).split(',');
+      cb({ name: file.name, mime: file.type || 'application/octet-stream', dataBase64: parts[1] });
+    };
+    reader.onerror = function () { onErr(new Error('อ่านไฟล์ไม่สำเร็จ')); };
+    reader.readAsDataURL(file);
+  }
+
+  // ---------- ส่ง ----------
+  document.getElementById('docForm').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    if (!selectedFile) { alert('กรุณาแนบไฟล์เอกสาร'); return; }
+    if (!document.getElementById('unit').value) { alert('กรุณาเลือกงาน/หน่วยงาน'); return; }
+    if (!sig.isSigned()) { alert('กรุณาเซ็นลายเซ็นผู้จัดทำหรือแนบรูปลายเซ็นก่อน'); return; }
+    var signature = sig.dataUrl();
+    if (signature.length >= 50000) {
+      alert('รูปลายเซ็นมีขนาดใหญ่เกินไป กรุณาใช้รูปที่พื้นหลังเรียบง่ายกว่านี้');
+      return;
+    }
+
+    setBusy(true, 'กำลังอ่านไฟล์...');
+    readFileBase64(selectedFile, function (filePayload) {
+      setBusy(true, 'กำลังอัปโหลดและส่งอีเมลขอลงนาม...');
+      google.script.run
+        .withSuccessHandler(onSubmitted)
+        .withFailureHandler(function (err) {
+          setBusy(false, '');
+          setStatus('ส่งไม่สำเร็จ: ' + err.message, 'err');
+        })
+        .submitDocument({
+          darId: DAR_ID,
+          docCode: document.getElementById('docCode').value,
+          changeKind: document.getElementById('changeKind').value,
+          edition: document.getElementById('edition').value,
+          amendment: document.getElementById('amendment').value,
+          controlType: document.getElementById('controlType').value,
+          copyNo: document.getElementById('copyNo').value,
+          changePages: document.getElementById('changePages').value,
+          docTitle: document.getElementById('docTitle').value,
+          docType: document.getElementById('docType').value,
+          unit: document.getElementById('unit').value,
+          effectiveDate: document.getElementById('effectiveDate').value,
+          reviewCycleMonths: document.getElementById('reviewCycle').value,
+          changeNote: document.getElementById('changeNote').value,
+          authorName: document.getElementById('authorName').value,
+          authorEmail: document.getElementById('authorEmail').value,
+          authorSignature: signature,
+          file: filePayload
+        });
+    }, function (err) {
+      setBusy(false, '');
+      setStatus(err.message, 'err');
+    });
+  });
+
+  function onSubmitted(res) {
+    document.getElementById('docForm').style.display = 'none';
+    document.getElementById('doneBody').innerHTML =
+      '<table class="meta-table">' +
+      '<tr><th>เลขที่เอกสาร</th><td>' + escapeHtml(document.getElementById('docCode').value.toUpperCase()) +
+      ' (ฉบับที่ ' + escapeHtml(res.editionLabel) + ')</td></tr>' +
+      '<tr><th>สถานะ</th><td>' + escapeHtml(res.status) + '</td></tr>' +
+      '<tr><th>ไฟล์ที่อัปโหลด</th><td><a href="' + escapeHtml(res.fileUrl) + '" target="_blank">เปิดไฟล์ใน Drive</a></td></tr>' +
+      '</table>' +
+      '<div class="mini" style="margin-top:10px">ระบบส่งอีเมลขอลงนามให้ผู้ทบทวน/ผู้อนุมัติแล้ว ' +
+      'ติดตามสถานะได้ที่หน้าคลังเอกสาร</div>';
+    document.getElementById('doneCard').style.display = 'block';
+    window.scrollTo(0, 0);
+  }
+
+  function setBusy(busy, text) {
+    document.getElementById('submitBtn').disabled = busy;
+    if (text) setStatus(text, 'wait');
+  }
+
+  function setStatus(text, cls) {
+    var el = document.getElementById('statusMsg');
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+  }
+
+  function escapeHtml(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

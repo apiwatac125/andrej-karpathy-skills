@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="archive" data-doc="<?= docId ?>" data-token="<?= token ?>">
+<div class="wrap">
+  <?!= include('Nav') ?>
+  <div class="no-print" style="margin-bottom:10px">
+    <button type="button" class="ghost" onclick="window.print()">พิมพ์ / บันทึก PDF</button>
+  </div>
+
+  <div id="content" class="msg wait">กำลังโหลดเอกสาร...</div>
+</div>
+
+<?!= include('SigPad') ?>
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+  var DOC_ID = document.body.getAttribute('data-doc');
+  var TOKEN = document.body.getAttribute('data-token');
+  var sig = null;
+
+  load();
+
+  function load() {
+    google.script.run.withSuccessHandler(render).withFailureHandler(renderError)
+      .getDocForSigning(DOC_ID, TOKEN);
+  }
+
+  function renderError(err) {
+    document.getElementById('content').className = 'msg err';
+    document.getElementById('content').textContent = 'เปิดเอกสารไม่ได้: ' + err.message;
+  }
+
+  function render(d) {
+    var html = '';
+
+    html += '<h1>' + escapeHtml(d.docCode) + '  ฉบับที่ ' + escapeHtml(d.editionLabel) + '</h1>';
+    html += '<div class="sub">' + escapeHtml(d.docTitle) +
+      ' · ' + escapeHtml(d.docTypeLabel) + ' · ' + escapeHtml(d.unit) +
+      ' <span class="badge ' + statusClass(d.status) + '">' + escapeHtml(d.status) + '</span></div>';
+
+    // ---------- ข้อมูลควบคุมเอกสาร ----------
+    html += '<div class="card"><h3>ข้อมูลควบคุมเอกสาร</h3><table class="meta-table">' +
+      row('เลขที่เอกสาร', d.docCode) +
+      row('ชื่อเอกสาร', d.docTitle) +
+      row('ประเภทเอกสาร', d.docTypeLabel) +
+      row('งาน / หน่วยงาน', d.unit) +
+      row('ฉบับที่', d.editionLabel) +
+      row('ลักษณะการเปลี่ยนแปลง', d.changeKindLabel) +
+      row('ทบทวนครั้งที่', d.reviewCount ? String(d.reviewCount) : '-') +
+      row('เอกสารฉบับนี้เป็น', d.controlTypeLabel + (d.copyNo ? '  สำเนาฉบับที่ ' + d.copyNo : '')) +
+      row('วันที่จัดทำ', d.createdAt) +
+      row('วันที่ประกาศใช้', d.effectiveDate || '(ใช้วันที่อนุมัติ)') +
+      row('รอบทบทวน', d.reviewCycleMonths ? (d.reviewCycleMonths + ' เดือน') : '-') +
+      row('กำหนดทบทวนครั้งถัดไป', d.nextReviewDate || '-') +
+      '</table>';
+    if (d.changeNote) {
+      html += '<div style="margin-top:12px"><label>สาระสำคัญของการจัดทำ / แก้ไข</label>'+(d.changePages?'<div class="mini">หน้าที่แก้: '+escapeHtml(d.changePages)+'</div>':'')+'' +
+        '<div class="note-box">' + escapeHtml(d.changeNote) + '</div></div>';
+    }
+    html += '</div>';
+
+    // ---------- ไฟล์เอกสาร ----------
+    html += '<div class="card"><h3>ไฟล์เอกสารที่ขอลงนาม</h3>' +
+      '<div class="mini" style="margin-bottom:8px">' + escapeHtml(d.fileName) +
+      ' — <a href="' + escapeHtml(d.fileUrl) + '" target="_blank">เปิดใน Google Drive</a>' +
+      ' <span class="no-print">(ถ้าตัวอย่างด้านล่างไม่แสดง ให้กดลิงก์นี้)</span></div>';
+    if (d.filePreviewUrl) {
+      html += '<iframe class="no-print" src="' + escapeHtml(d.filePreviewUrl) +
+        '" style="width:100%;height:620px;border:1px solid var(--border);border-radius:8px" ' +
+        'loading="lazy"></iframe>';
+    }
+    html += '</div>';
+
+    // ---------- ลายเซ็นที่มีแล้ว ----------
+    html += '<div class="card"><h3>การลงนาม</h3><div class="sigs">' +
+      sigBlock('ผู้จัดทำ', d.authorName, d.authorAt, d.authorSignature, '') +
+      sigBlock(d.reviewerTitle || 'ผู้ทบทวน', d.reviewerName, d.reviewerAt, d.reviewerSignature, d.reviewerComment) +
+      sigBlock(d.approverTitle || 'ผู้อนุมัติ', d.approverName, d.approverAt, d.approverSignature, d.approverComment) +
+      '</div></div>';
+
+    // ---------- ฟอร์มลงนามของขั้นที่รออยู่ ----------
+    if (d.pendingStage) {
+      var stageLabel = (d.pendingStage === 'review')
+        ? (d.reviewerTitle || 'ผู้ทบทวน') + ' — ขั้นทบทวน'
+        : (d.approverTitle || 'ผู้อนุมัติ') + ' — ขั้นอนุมัติ';
+      html += '<div class="card no-print"><h3>ลงนามในฐานะ ' + escapeHtml(stageLabel) + '</h3>' +
+        '<div class="field"><label for="signerName">ชื่อ-นามสกุล ผู้ลงนาม <span style="color:var(--danger)">*</span></label>' +
+        '<input type="text" id="signerName" autocomplete="off"></div>' +
+        '<div class="field"><label for="comment">ความเห็นเพิ่มเติม</label>' +
+        '<div class="hint">ความเห็นจะถูกพิมพ์ลงใบปกควบคุมเอกสาร (ไม่เกิน 500 ตัวอักษร)</div>' +
+        '<textarea id="comment"></textarea></div>' +
+        '<div class="field"><label>ลายเซ็นอิเล็กทรอนิกส์ <span style="color:var(--danger)">*</span></label>' +
+        '<div id="sigHost"></div></div>' +
+        '<button id="approveBtn">' + (d.pendingStage === 'review' ? 'ผ่านการทบทวน / ลงนาม' : 'อนุมัติ / ลงนาม') + '</button>' +
+        '<button id="rejectBtn" class="danger">' + (d.pendingStage === 'review' ? 'ไม่ผ่านการทบทวน' : 'ไม่อนุมัติ') + '</button>' +
+        '<div id="statusMsg" class="msg"></div></div>';
+    } else if (d.status === 'อนุมัติแล้ว') {
+      html += '<div class="card no-print"><h3>เอกสารอนุมัติแล้ว</h3>' +
+        '<div>ประกาศใช้ ' + escapeHtml(d.effectiveDate) +
+        (d.nextReviewDate ? ' · กำหนดทบทวนครั้งถัดไป ' + escapeHtml(d.nextReviewDate) : '') + '</div>' +
+        (d.coverPdfUrl
+          ? '<div style="margin-top:8px"><a href="' + escapeHtml(d.coverPdfUrl) + '" target="_blank">เปิดใบปกควบคุมเอกสาร (PDF)</a></div>'
+          : '<div class="mini" style="margin-top:8px">ยังไม่มีไฟล์ใบปก PDF — สร้างย้อนหลังได้จากหน้าคลังเอกสาร</div>') +
+        '</div>';
+    } else {
+      html += '<div class="card no-print"><h3>สถานะ: ' + escapeHtml(d.status) + '</h3>' +
+        '<div>เอกสารฉบับนี้ปิดการลงนามแล้ว ใช้ปุ่มด้านบนเพื่อพิมพ์หรือบันทึกเป็น PDF ได้</div></div>';
+    }
+
+    document.getElementById('content').className = '';
+    document.getElementById('content').innerHTML = html;
+
+    if (d.pendingStage) {
+      sig = WiSig.mount('sigHost');
+      document.getElementById('approveBtn').onclick = function () { decide('approve'); };
+      document.getElementById('rejectBtn').onclick = function () { decide('reject'); };
+    }
+  }
+
+  function decide(decision) {
+    var name = document.getElementById('signerName').value.trim();
+    if (!name) { alert('กรุณากรอกชื่อผู้ลงนาม'); return; }
+    if (!sig.isSigned()) { alert('กรุณาเซ็นลายเซ็นหรือแนบรูปลายเซ็นก่อน'); return; }
+    var signature = sig.dataUrl();
+    if (signature.length >= 50000) {
+      alert('รูปลายเซ็นมีขนาดใหญ่เกินไป กรุณาใช้รูปที่พื้นหลังเรียบง่ายกว่านี้');
+      return;
+    }
+    if (decision === 'reject' && !confirm('ยืนยันไม่ผ่าน/ไม่อนุมัติเอกสารฉบับนี้?')) return;
+
+    document.getElementById('approveBtn').disabled = true;
+    document.getElementById('rejectBtn').disabled = true;
+    setStatus('กำลังบันทึก...', 'wait');
+
+    google.script.run.withSuccessHandler(function (res) {
+      setStatus('บันทึกเรียบร้อย: ' + res.status + ' — กำลังรีเฟรชเอกสาร...', 'ok');
+      load();
+    }).withFailureHandler(function (err) {
+      document.getElementById('approveBtn').disabled = false;
+      document.getElementById('rejectBtn').disabled = false;
+      setStatus('บันทึกไม่สำเร็จ: ' + err.message, 'err');
+    }).signDocument(DOC_ID, TOKEN, name, decision,
+      document.getElementById('comment').value, signature);
+  }
+
+  // ---------- helpers ----------
+  function row(label, value) {
+    return '<tr><th>' + escapeHtml(label) + '</th><td>' + escapeHtml(value || '-') + '</td></tr>';
+  }
+
+  function sigBlock(title, name, at, signature, comment) {
+    return '<div class="sig">' +
+      (comment ? '<div class="sig-note">ความเห็น: ' + escapeHtml(comment) + '</div>' : '') +
+      (signature ? '<img src="' + escapeHtml(signature) + '" alt="">' : '<div class="sig-blank"></div>') +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">(' + escapeHtml(name || '.....................') + ')</div>' +
+      '<div class="sig-title">' + escapeHtml(title) + '</div>' +
+      '<div class="sig-date">วันที่ ' + escapeHtml(at || '............') + '</div>' +
+      '</div>';
+  }
+
+  function statusClass(status) {
+    if (status === 'อนุมัติแล้ว') return 'approved';
+    if (status === 'รอทบทวน' || status === 'รออนุมัติ') return 'wait';
+    if (status === 'ยกเลิกใช้') return 'obsolete';
+    return 'rejected';
+  }
+
+  function setStatus(text, cls) {
+    var el = document.getElementById('statusMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+  }
+
+  function escapeHtml(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

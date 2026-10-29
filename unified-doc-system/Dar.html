@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+</head>
+<body data-base="<?= baseUrl ?>" data-page="dar"
+      data-dar="<?= darId ?>" data-token="<?= token ?>" data-capa="<?= capaId ?>">
+<div class="wrap wide">
+  <?!= include('Nav') ?>
+  <div id="content" class="msg wait">กำลังโหลด...</div>
+</div>
+
+<?!= include('SigPad') ?>
+<script>
+  var BASE_URL = document.body.getAttribute('data-base');
+  var DAR_ID = document.body.getAttribute('data-dar');
+  var TOKEN = document.body.getAttribute('data-token');
+  var CAPA_ID = document.body.getAttribute('data-capa');
+  var INIT = null;
+  var DAR = null;
+  var CAPA_SEED = null;
+  var sig = null;
+
+  google.script.run.withSuccessHandler(function (init) {
+    INIT = init;
+    if (DAR_ID) loadDar();
+    else if (CAPA_ID) loadCapaSeed();
+    else renderList();
+  }).withFailureHandler(fail).getDarInit();
+
+  function fail(err) {
+    document.getElementById('content').className = 'msg err';
+    document.getElementById('content').textContent = 'ทำรายการไม่สำเร็จ: ' + err.message;
+  }
+
+  function loadDar() {
+    google.script.run.withSuccessHandler(function (d) {
+      DAR = d;
+      renderDar();
+    }).withFailureHandler(fail).getDocRequest(DAR_ID, TOKEN);
+  }
+
+  function loadCapaSeed() {
+    google.script.run.withSuccessHandler(function (c) {
+      CAPA_SEED = c;
+      renderList(true);
+    }).withFailureHandler(fail).getCapaForDar(CAPA_ID);
+  }
+
+  // ============================================================
+  // รายการคำขอ + ฟอร์มยื่นคำขอ
+  // ============================================================
+  function renderList(openForm) {
+    google.script.run.withSuccessHandler(function (list) {
+      var waiting = list.filter(function (r) { return r.status === 'รออนุมัติคำขอ'; });
+      var inProgress = list.filter(function (r) { return r.status === 'อนุมัติให้ดำเนินการ'; });
+
+      var html = '<h1>คำขอดำเนินการกับเอกสาร (DAR)</h1>' +
+        '<div class="sub">ขออนุมัติ<b>ก่อน</b>ลงมือจัดทำ แก้ไข หรือยกเลิกเอกสารคุณภาพ ' +
+        'พร้อมประเมินผลกระทบ — เอกสารที่ออกตามคำขอจะผูกกลับมาที่คำขอนี้อัตโนมัติ</div>';
+
+      if (!INIT.requireDar) {
+        html += '<div class="warnbar">ตอนนี้ยัง<b>ไม่บังคับ</b>ให้มีใบขออนุมัติก่อนส่งเอกสาร ' +
+          '(Config <code>require_dar = FALSE</code>) — ส่งเอกสารตรงที่หน้า "ส่งเอกสารขอลงนาม" ได้ตามเดิม ' +
+          'เปลี่ยนเป็น TRUE เมื่อพร้อมบังคับใช้ทั้งระบบ</div>';
+      }
+
+      html += '<div class="tiles">' +
+        tile(waiting.length, 'รออนุมัติคำขอ', waiting.length ? 'warn' : '') +
+        tile(inProgress.length, 'อนุมัติแล้ว รอจัดทำ', '') +
+        tile(list.filter(function (r) { return r.status === 'ดำเนินการแล้ว'; }).length, 'ปิดคำขอแล้ว', '') +
+        tile(list.length, 'คำขอทั้งหมด', '') +
+        '</div>';
+
+      html += '<div class="section-head"><h2>รายการคำขอ</h2><div class="spacer"></div>' +
+        '<button class="ghost" id="toggleNew">+ ยื่นคำขอใหม่</button></div>';
+      html += '<div class="card" id="newCard" style="display:' + (openForm ? 'block' : 'none') + '">' + newForm() + '</div>';
+
+      if (!list.length) {
+        html += '<div class="card">ยังไม่มีคำขอในระบบ</div>';
+      } else {
+        html += '<div class="card" style="overflow-x:auto"><table class="list">' +
+          '<tr><th>เลขที่</th><th>ประเภท</th><th>เอกสาร</th><th>หน่วยงาน</th>' +
+          '<th>ผู้ขอ</th><th>วันที่ขอ</th><th>สถานะ</th><th></th></tr>';
+        list.forEach(function (r) {
+          html += '<tr>' +
+            '<td>' + esc(r.darNo) + (r.capaNo ? '<div class="mini">' + esc(r.capaNo) + '</div>' : '') + '</td>' +
+            '<td>' + esc(r.typeLabel) + '<div class="mini">' + esc(r.sourceLabel) + '</div></td>' +
+            '<td>' + esc(r.docCode || '(ใหม่)') + '<div class="mini">' + esc(r.docTitle) + '</div>' +
+            (r.resultingDocCode ? '<div class="mini">→ ออกเป็น ' + esc(r.resultingDocCode) +
+              ' ฉบับที่ ' + esc(String(r.resultingEdition)) + '</div>' : '') + '</td>' +
+            '<td>' + esc(r.unit) + '</td>' +
+            '<td>' + esc(r.requesterName) + '</td>' +
+            '<td>' + esc(r.requestedAt) + '</td>' +
+            '<td><span class="badge ' + statusClass(r.status) + '">' + esc(r.status) + '</span></td>' +
+            '<td><a class="badge" href="' + BASE_URL + '?page=dar&id=' + esc(r.darId) + '">เปิด</a>' +
+            (r.pdfUrl ? ' <a class="badge" href="' + esc(r.pdfUrl) + '" target="_blank">PDF</a>' : '') + '</td>' +
+            '</tr>';
+        });
+        html += '</table></div>';
+      }
+
+      show(html);
+      document.getElementById('toggleNew').onclick = function () {
+        var el = document.getElementById('newCard');
+        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+      };
+      wireNewForm();
+    }).withFailureHandler(fail).getDarList({});
+  }
+
+  function newForm() {
+    var seedUnit = CAPA_SEED ? CAPA_SEED.unit : '';
+    var seedCode = CAPA_SEED ? CAPA_SEED.docCode : '';
+    var seedReason = CAPA_SEED ? CAPA_SEED.reason : '';
+    var html = '<h3>ยื่นคำขอใหม่ <span class="mini">(เลขที่ถัดไป: ' + esc(INIT.nextDarNo) + ')</span></h3>';
+
+    if (CAPA_SEED) {
+      html += '<div class="note-box" style="margin-bottom:12px">เปิดคำขอต่อจาก <b>' + esc(CAPA_SEED.capaNo) +
+        '</b> — ระบบจะผูกคำขอนี้กลับไปที่ CAPA ให้อัตโนมัติ</div>';
+    }
+
+    html += '<div class="row">' +
+      '<div class="field"><label for="d-type">ประเภทคำขอ <span style="color:var(--danger)">*</span></label>' +
+      '<select id="d-type">' + INIT.types.map(function (t) {
+        return '<option value="' + esc(t.value) + '"' + (seedCode && t.value === 'revise' ? ' selected' : '') + '>' +
+          esc(t.label) + '</option>';
+      }).join('') + '</select>' +
+      '<div class="hint" id="d-typehint"></div></div>' +
+      '<div class="field"><label for="d-source">แหล่งที่มาของคำขอ</label><select id="d-source">' +
+      INIT.sources.map(function (s) {
+        return '<option value="' + esc(s.value) + '"' + (CAPA_SEED && s.value === 'capa' ? ' selected' : '') + '>' +
+          esc(s.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '</div>';
+
+    html += '<div class="row">' +
+      '<div class="field"><label for="d-code">เลขที่เอกสารเดิม</label>' +
+      '<div class="hint">เว้นว่างได้เฉพาะคำขอจัดทำเอกสารใหม่</div>' +
+      '<input type="text" id="d-code" autocomplete="off" value="' + esc(seedCode) + '">' +
+      '<div class="mini" id="d-codeinfo" style="margin-top:6px"></div></div>' +
+      '<div class="field"><label for="d-unit">งาน / หน่วยงาน <span style="color:var(--danger)">*</span></label>' +
+      '<select id="d-unit">' + INIT.units.map(function (u) {
+        return '<option value="' + esc(u) + '"' + (u === seedUnit ? ' selected' : '') + '>' + esc(u) + '</option>';
+      }).join('') + '</select></div>' +
+      '</div>';
+
+    html += '<div class="row">' +
+      '<div class="field" style="flex:2 1 300px"><label for="d-title">ชื่อเอกสาร <span style="color:var(--danger)">*</span></label>' +
+      '<input type="text" id="d-title" autocomplete="off"></div>' +
+      '<div class="field"><label for="d-doctype">ประเภทเอกสาร</label><select id="d-doctype">' +
+      INIT.docTypes.map(function (t) {
+        return '<option value="' + esc(t.value) + '">' + esc(t.label) + '</option>';
+      }).join('') + '</select></div>' +
+      '</div>';
+
+    html += '<div class="field"><label for="d-reason">เหตุผลของคำขอ <span style="color:var(--danger)">*</span></label>' +
+      '<div class="hint">อธิบายว่าทำไมต้องจัดทำ/แก้ไข/ยกเลิก — ข้อความนี้พิมพ์ลงใบคำขอ</div>' +
+      '<textarea id="d-reason" style="min-height:96px">' + esc(seedReason) + '</textarea></div>';
+
+    html += '<div class="card" style="background:#fafbfc;margin:0 0 14px"><h3 style="font-size:17px">การประเมินผลกระทบ</h3>' +
+      '<div class="hint" style="margin-bottom:10px">ส่วนนี้คือเหตุผลหลักที่ใบขออนุมัติมีค่า — ' +
+      'ผู้พิจารณาต้องเห็นก่อนว่าการเปลี่ยนเอกสารฉบับนี้กระทบอะไรบ้าง</div>' +
+      '<div class="chips" style="margin-bottom:10px">' +
+      '<label><input type="checkbox" id="d-training"> ต้องอบรม/สื่อสารผู้ปฏิบัติใหม่</label>' +
+      '<label><input type="checkbox" id="d-results"> กระทบผลตรวจที่รายงานออกไปแล้ว</label>' +
+      '</div>' +
+      '<div class="field"><label for="d-docs">เอกสารอื่นที่ต้องแก้ตาม</label>' +
+      '<div class="hint">เช่น แบบฟอร์มบันทึกที่อ้างถึงใน WI ฉบับนี้</div>' +
+      '<input type="text" id="d-docs" autocomplete="off" placeholder="เช่น FM-MIC-011, SOP-MIC-001"></div>' +
+      '<div class="field" style="margin-bottom:0"><label for="d-impactnote">หมายเหตุเพิ่มเติม</label>' +
+      '<textarea id="d-impactnote"></textarea></div></div>';
+
+    html += '<div class="row">' +
+      '<div class="field"><label for="d-name">ชื่อผู้ขอ <span style="color:var(--danger)">*</span></label>' +
+      '<input type="text" id="d-name" autocomplete="off"></div>' +
+      '<div class="field"><label for="d-mail">อีเมลผู้ขอ <span style="color:var(--danger)">*</span></label>' +
+      '<div class="hint">ใช้แจ้งผลการพิจารณากลับ</div>' +
+      '<input type="text" id="d-mail" autocomplete="off" value="' + esc(INIT.userEmail) + '"></div>' +
+      '</div>';
+
+    html += '<button class="act" id="d-create">ยื่นคำขอ</button><div class="msg" id="d-msg"></div>';
+    return html;
+  }
+
+  function wireNewForm() {
+    var type = document.getElementById('d-type');
+    if (!type) return;
+    type.onchange = typeHint;
+    typeHint();
+    document.getElementById('d-code').addEventListener('blur', lookupCode);
+    if (document.getElementById('d-code').value) lookupCode();
+    document.getElementById('d-create').onclick = submitDar;
+  }
+
+  function typeHint() {
+    var v = document.getElementById('d-type').value;
+    var hint = document.getElementById('d-typehint');
+    if (v === 'new') hint.textContent = 'เอกสารใหม่ที่ยังไม่เคยมีในคลัง';
+    else if (v === 'revise') hint.textContent = 'แก้ไขเอกสารเดิม — อนุมัติแล้วจึงอัปโหลดฉบับใหม่ได้';
+    else hint.textContent = 'ยกเลิกถาวร ไม่มีฉบับใหม่มาแทน — อนุมัติแล้วเอกสารจะขึ้นสถานะ "ยกเลิกใช้" ทันที';
+  }
+
+  function lookupCode() {
+    var code = document.getElementById('d-code').value.trim();
+    var info = document.getElementById('d-codeinfo');
+    if (!code) { info.textContent = ''; return; }
+    info.textContent = 'กำลังค้นหา...';
+    google.script.run.withSuccessHandler(function (res) {
+      if (!res.exists) {
+        info.innerHTML = '<span style="color:var(--warn)">ยังไม่มีเลขนี้ในคลัง — ใช้ได้เฉพาะคำขอจัดทำเอกสารใหม่</span>';
+        return;
+      }
+      info.innerHTML = 'ฉบับปัจจุบัน <b>' + esc(res.editionLabel) + '</b> "' + esc(res.title) + '" (' +
+        esc(res.status) + (res.effectiveDate ? ' · บังคับใช้ ' + esc(res.effectiveDate) : '') + ')';
+      if (!document.getElementById('d-title').value) document.getElementById('d-title').value = res.title;
+      if (res.docType) document.getElementById('d-doctype').value = res.docType;
+      if (res.unit) document.getElementById('d-unit').value = res.unit;
+    }).withFailureHandler(function (err) {
+      info.textContent = err.message;
+    }).lookupDocForDar(code);
+  }
+
+  function submitDar() {
+    var btn = document.getElementById('d-create');
+    btn.disabled = true;
+    setMsg('d-msg', 'กำลังบันทึก...', 'wait');
+    google.script.run.withSuccessHandler(function (res) {
+      location.href = BASE_URL + '?page=dar&id=' + res.darId;
+    }).withFailureHandler(function (err) {
+      btn.disabled = false;
+      setMsg('d-msg', err.message, 'err');
+    }).createDocRequest({
+      requestType: document.getElementById('d-type').value,
+      source: document.getElementById('d-source').value,
+      capaId: CAPA_SEED ? CAPA_SEED.capaId : '',
+      capaNo: CAPA_SEED ? CAPA_SEED.capaNo : '',
+      docCode: document.getElementById('d-code').value,
+      docTitle: document.getElementById('d-title').value,
+      docType: document.getElementById('d-doctype').value,
+      unit: document.getElementById('d-unit').value,
+      reason: document.getElementById('d-reason').value,
+      impactTraining: document.getElementById('d-training').checked,
+      impactResults: document.getElementById('d-results').checked,
+      impactDocs: document.getElementById('d-docs').value,
+      impactNote: document.getElementById('d-impactnote').value,
+      requesterName: document.getElementById('d-name').value,
+      requesterEmail: document.getElementById('d-mail').value
+    });
+  }
+
+  // ============================================================
+  // รายละเอียดคำขอ
+  // ============================================================
+  function renderDar() {
+    var d = DAR;
+    var waiting = (d.status === 'รออนุมัติคำขอ');
+    var approved = (d.status === 'อนุมัติให้ดำเนินการ');
+
+    var html = '<div class="crumb mini no-print"><a href="' + BASE_URL + '?page=dar">← คำขอทั้งหมด</a></div>' +
+      '<h1>' + esc(d.darNo) + '</h1>' +
+      '<div class="sub">' + esc(d.typeLabel) + ' · ' + esc(d.unit) +
+      ' <span class="badge ' + statusClass(d.status) + '">' + esc(d.status) + '</span></div>';
+
+    html += '<div class="stepper no-print">' +
+      step('1 ยื่นคำขอ', true) +
+      step('2 พิจารณาอนุมัติ', !waiting) +
+      step(d.requestType === 'withdraw' ? '3 ตีเอกสารเป็นยกเลิกใช้' : '3 จัดทำและลงนามเอกสาร',
+        d.status === 'ดำเนินการแล้ว') +
+      '</div>';
+
+    html += '<div class="card"><h3>รายละเอียดคำขอ</h3><table class="meta-table">' +
+      row('เลขที่คำขอ', d.darNo) +
+      row('ประเภทคำขอ', d.typeLabel) +
+      row('แหล่งที่มา', d.sourceLabel + (d.capaNo ? ' — ' + d.capaNo : '')) +
+      row('เลขที่เอกสาร', d.docCode || '(เอกสารใหม่ ยังไม่มีเลขที่)') +
+      row('ชื่อเอกสาร', d.docTitle) +
+      row('ประเภทเอกสาร', d.docTypeLabel) +
+      row('งาน / หน่วยงาน', d.unit) +
+      (d.existing ? row('ฉบับที่ใช้อยู่ปัจจุบัน', 'ฉบับที่ ' + d.existing.editionLabel + ' (' + d.existing.status + ')' +
+        (d.existing.effectiveDate ? ' บังคับใช้ ' + d.existing.effectiveDate : '')) : '') +
+      row('ผู้ขอ', d.requesterName + (d.requesterEmail ? ' (' + d.requesterEmail + ')' : '')) +
+      row('วันที่ยื่นคำขอ', d.requestedAt) +
+      '</table>' +
+      '<div style="margin-top:12px"><label>เหตุผลของคำขอ</label>' +
+      '<div class="note-box">' + esc(d.reason) + '</div></div></div>';
+
+    html += '<div class="card"><h3>การประเมินผลกระทบ</h3><table class="meta-table">' +
+      row('ต้องอบรม/สื่อสารผู้ปฏิบัติใหม่', d.impactTraining ? 'ใช่' : 'ไม่') +
+      row('กระทบผลตรวจที่รายงานออกไปแล้ว', d.impactResults ? 'ใช่' : 'ไม่') +
+      row('เอกสารอื่นที่ต้องแก้ตาม', d.impactDocs) +
+      row('หมายเหตุ', d.impactNote) +
+      '</table>' +
+      (d.impactResults ? '<div class="warnbar" style="margin:12px 0 0">' +
+        '<b>กระทบผลที่รายงานไปแล้ว</b> — ตาม ISO 15189 ข้อ 7.5 ต้องพิจารณาด้วยว่าต้องเรียกคืน/แก้ไขรายงานผล ' +
+        'ที่ออกไปแล้วหรือไม่ และแจ้งผู้ใช้บริการอย่างไร</div>' : '') +
+      '</div>';
+
+    html += '<div class="card"><h3>การพิจารณา</h3><div class="sigs">' +
+      sigBlock('ผู้ขอ', d.requesterName, d.requestedAt, '', '') +
+      sigBlock(d.approverTitle, d.approverName, d.approvedAt, d.approverSignature, d.approverComment) +
+      '</div>' +
+      (d.pdfUrl ? '<div style="margin-top:12px"><a href="' + esc(d.pdfUrl) + '" target="_blank">เปิดใบคำขอ (PDF)</a></div>' : '') +
+      '</div>';
+
+    if (waiting) {
+      html += '<div class="card no-print"><h3>พิจารณาคำขอ (' + esc(d.approverTitle) + ')</h3>' +
+        (d.requestType === 'withdraw'
+          ? '<div class="warnbar">อนุมัติแล้วระบบจะตีเอกสาร <b>' + esc(d.docCode) +
+            '</b> เป็น "ยกเลิกใช้" ทันที โดยไม่มีฉบับใหม่มาแทน</div>'
+          : '<div class="hint" style="margin-bottom:10px">อนุมัติแล้วผู้ขอจะได้ลิงก์ไปหน้าอัปโหลดเอกสาร ' +
+            'ที่เติมข้อมูลจากคำขอนี้ให้แล้ว</div>') +
+        '<div class="field"><label for="a-name">ชื่อผู้พิจารณา <span style="color:var(--danger)">*</span></label>' +
+        '<input type="text" id="a-name" autocomplete="off"></div>' +
+        '<div class="field"><label for="a-comment">ความเห็น</label>' +
+        '<div class="hint">พิมพ์ลงใบคำขอ (ไม่เกิน 500 ตัวอักษร)</div>' +
+        '<textarea id="a-comment"></textarea></div>' +
+        '<div class="field"><label>ลายเซ็นอิเล็กทรอนิกส์ <span style="color:var(--danger)">*</span></label>' +
+        '<div id="sigHost"></div></div>' +
+        '<button class="act" id="a-ok">อนุมัติคำขอ</button>' +
+        '<button class="danger" id="a-no">ไม่อนุมัติ</button>' +
+        '<div class="msg" id="a-msg"></div></div>';
+    }
+
+    if (approved && d.requestType !== 'withdraw') {
+      html += '<div class="card no-print"><h3>ขั้นถัดไป: จัดทำและอัปโหลดเอกสาร</h3>' +
+        '<div class="hint" style="margin-bottom:10px">หน้าอัปโหลดจะเติมเลขที่เอกสาร ชื่อ ประเภท หน่วยงาน ' +
+        'และเหตุผลจากคำขอนี้ให้อัตโนมัติ</div>' +
+        '<a class="badge" style="padding:8px 16px;font-size:16px" href="' + BASE_URL +
+        '?page=upload&dar=' + esc(d.darId) + '">ไปหน้าอัปโหลดเอกสารตามคำขอนี้</a></div>';
+    }
+
+    if (d.resultingDocCode) {
+      html += '<div class="card"><h3>ผลการดำเนินการ</h3>' +
+        '<div class="list-row"><span class="key">' + esc(d.resultingDocCode) +
+        (d.resultingEdition !== '' ? ' ฉบับที่ ' + esc(String(d.resultingEdition)) : '') + '</span>' +
+        '<span class="grow">' + esc(d.docTitle) + '</span>' +
+        '<span class="mini">ปิดคำขอเมื่อ ' + esc(d.closedAt) + '</span>' +
+        '<a class="badge" href="' + BASE_URL + '?page=archive">ดูในคลังเอกสาร</a></div></div>';
+    }
+
+    show(html);
+    if (waiting) {
+      sig = WiSig.mount('sigHost');
+      document.getElementById('a-ok').onclick = function () { decide('approve'); };
+      document.getElementById('a-no').onclick = function () { decide('reject'); };
+    }
+  }
+
+  function decide(decision) {
+    var name = document.getElementById('a-name').value.trim();
+    if (!name) { setMsg('a-msg', 'กรุณากรอกชื่อผู้พิจารณา', 'err'); return; }
+    if (!sig.isSigned()) { setMsg('a-msg', 'กรุณาเซ็นลายเซ็นก่อน', 'err'); return; }
+    document.getElementById('a-ok').disabled = true;
+    document.getElementById('a-no').disabled = true;
+    setMsg('a-msg', 'กำลังบันทึก...', 'wait');
+    google.script.run.withSuccessHandler(function () { loadDar(); })
+      .withFailureHandler(function (err) {
+        document.getElementById('a-ok').disabled = false;
+        document.getElementById('a-no').disabled = false;
+        setMsg('a-msg', err.message, 'err');
+      })
+      .approveDocRequest(DAR_ID, TOKEN, name, decision,
+        document.getElementById('a-comment').value, sig.dataUrl());
+  }
+
+  // ---------- helpers ----------
+  function statusClass(s) {
+    if (s === 'ดำเนินการแล้ว') return 'approved';
+    if (s === 'รออนุมัติคำขอ' || s === 'อนุมัติให้ดำเนินการ') return 'wait';
+    if (s === 'ยกเลิกคำขอ') return 'obsolete';
+    return 'rejected';
+  }
+  function tile(n, label, cls) {
+    return '<div class="tile ' + (cls || '') + '"><div class="n">' + n + '</div><div class="k">' + esc(label) + '</div></div>';
+  }
+  function step(label, done) {
+    return '<span class="' + (done ? 'done' : '') + '">' + esc(label) + '</span>';
+  }
+  function row(k, v) {
+    return '<tr><th>' + esc(k) + '</th><td>' + esc(v || '-') + '</td></tr>';
+  }
+  function sigBlock(role, name, at, img, comment) {
+    return '<div class="sig">' +
+      (comment ? '<div class="sig-note">ความเห็น: ' + esc(comment) + '</div>' : '') +
+      (img ? '<img src="' + esc(img) + '" alt="">' : '<div class="sig-blank"></div>') +
+      '<div class="sig-line"></div>' +
+      '<div class="sig-name">(' + esc(name || '.....................') + ')</div>' +
+      '<div class="sig-title">' + esc(role) + '</div>' +
+      '<div class="sig-date">วันที่ ' + esc(at || '............') + '</div></div>';
+  }
+  function show(html) {
+    var el = document.getElementById('content');
+    el.className = '';
+    el.innerHTML = html;
+  }
+  function setMsg(id, text, cls) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'msg ' + (cls || '');
+  }
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>
