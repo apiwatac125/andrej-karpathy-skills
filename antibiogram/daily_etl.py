@@ -151,6 +151,12 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
         h = profile.get("his", {})
         his_kw = dict(his_hn_col=h.get("hn_col"), his_admit_col=h.get("admit_col"),
                       his_an_col=h.get("an_col"))
+        # qr1020 HN เป็น 10 หลัก -> ตัด 2 หลักหน้าให้ตรง HN 8 หลักใน DBF (เหมือน his_ward_sync.norm_hn)
+        hn_col = h.get("hn_col")
+        if his is not None and hn_col and hn_col in his.columns:
+            import re
+            his[hn_col] = his[hn_col].map(
+                lambda s: (lambda d: d[2:] if len(d) >= 10 else d)(re.sub(r"\D", "", str(s))))
 
     std, _ = pipeline.prepare(raw, profile["col_map"], profile["ab_cols"], conditions,
                               his_df=his, **his_kw)

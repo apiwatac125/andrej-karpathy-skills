@@ -1,69 +1,75 @@
-# รัน antibiogram อัตโนมัติ "วันต่อวัน"
+# รัน antibiogram อัตโนมัติ "วันต่อวัน" (patho13)
 
-สรุปคำตอบ: ให้ `daily_etl.py` รัน **บนเครื่อง lab (patho13)** ทุกเช้าด้วย Windows Task Scheduler
-อ่าน **ไฟล์ DBF รายวันของ MLAB** (แหล่งเดียวกับที่ AMR Alert ใช้ แต่คนละ "ด่าน") แล้วเขียน
-**ตารางสรุปตัวเลข** (ไม่มี HN/ชื่อ) เป็น CSV และ/หรือขึ้น Google Sheet ให้เว็บแอป/แดชบอร์ดอ่านต่อ.
+ต่อ `daily_etl.py` เป็น **step [4]** ของ `master_daily.bat` ที่รันอยู่แล้วทุกวัน 15:30 น.
+ไม่ต้องตั้ง Task ใหม่ ไม่ต้องดึงข้อมูลใหม่ — ใช้ไฟล์ **DBF ที่ step [1] export อยู่แล้ว**
+แล้วเขียน **ตารางสรุปตัวเลข (ไม่มี HN/ชื่อ)** เป็น CSV (+ขึ้น Google Sheet ได้).
 
-## ทำไมต้องอ่าน DBF ไม่ใช่ข้อมูลที่ AMR Alert ดึงทุกวัน
+## ทำไมต้องอ่าน DBF ไม่ใช่ข้อมูลที่ AMR Alert ส่งขึ้น Sheet ทุกวัน
 
-AMR Alert Dashboard ที่ดึงทุกวันเก็บลง Google Sheet **"Logs" เฉพาะเชื้อดื้อ + ธง** (CRE/CRAB/MRSA …)
-— **ไม่มีผล S/I/R รายยา และไม่มี isolate ที่ยังไว** จึง **คิด %S ไม่ได้** (ไม่มีตัวหาร).
-antibiogram ตาม CLSI M39 ต้องใช้ผล S/I/R ของ *ทุก* isolate ซึ่งอยู่ในไฟล์ DBF เท่านั้น.
-→ เราจึง "ใช้โครงรายวันเดิม" (เครื่อง patho13 + สิทธิ์ gspread + Task Scheduler) แต่เปลี่ยน *input*
-เป็นไฟล์ DBF ที่ MLAB ออกทุกวัน.
+`mlab_daily_report.py` ส่งขึ้น Sheet เฉพาะ **เชื้อดื้อเฝ้าระวัง + ค่าวิกฤติ** (แถวที่ map surveillance code)
+— ไม่มีผล S/I/R ครบทุกยา และไม่มี isolate ที่ยังไว → **คิด %S ไม่ได้**.
+antibiogram ตาม CLSI M39 ต้องใช้ผลยารายตัวของ *ทุก* isolate ซึ่งอยู่ในไฟล์ DBF.
+→ `daily_etl.py` จึงอ่าน DBF ตรง (คนละด่านกับ daily report แต่ไฟล์เดียวกัน).
 
-## ข้อมูลไม่ออกจากเครื่อง (PHI)
+## ไฟล์ DBF สะสมอยู่แล้ว = ใช้ได้ทันที
 
-`daily_etl.py` อ่าน HN/ชื่อ **ในเครื่อง** เพื่อตัด isolate แรก/ผู้ป่วย และจับ CAI/HAI เท่านั้น.
-Output มีแค่: `period, period_start, period_end, stratum_type, stratum, organism, drug,
-n_tested, n_s, pct_s, lt30, intrinsic` — **ไม่มี HN/ชื่อ/AN** (มี `assert` กันพลาดในโค้ด).
+`mlab_export.au3` export วันละ 1 ไฟล์ชื่อ `DDMMYY.DBF` ลง `cfg.DBF_FOLDER` (ชื่อไม่ซ้ำ → **สะสมทุกวัน**).
+`daily_etl.py` อ่าน **ทุกไฟล์ในโฟลเดอร์** แล้วคิด antibiogram ของ **ทุกปีปฏิทิน + 12 เดือนล่าสุด (rolling)**
+→ มีไฟล์ของวันใหม่เข้ามา หน้าต่างก็ขยับเองวันต่อวัน.
 
-## รันครั้งเดียวด้วยมือ (ทดสอบ)
+> **ประวัติย้อนหลัง:** rolling 12 เดือนและรายปีจะครบก็ต่อเมื่อโฟลเดอร์มี DBF ย้อนหลังพอ.
+> ถ้าเพิ่งเริ่มสะสม ให้ **export ย้อนหลังครั้งเดียว** จากเมนู MLab (เมนู 4→8 ใส่ช่วง 01012025–วันนี้,
+> Sort=SIR, All) เป็นไฟล์เดียววางในโฟลเดอร์ แล้ว `daily_etl.py` จะรวมให้เอง.
+
+## field ที่ใช้ (ยืนยันจาก DBF จริง 291026.DBF, 211 fields)
+
+`config/mlab_profile.json` ตั้งไว้ตรง schema จริงแล้ว:
+
+| บทบาท | field DBF | หมายเหตุ |
+|---|---|---|
+| ผู้ป่วย (ตัดซ้ำ/CAI-HAI) | `HN` | 8 หลัก (ตรง qr1020 หลังตัด 2 หลักหน้า) |
+| ชื่อเชื้อ | `CORGANISM` | เช่น "Escherichia coli" |
+| โค้ดเชื้อ (กรอง) | `ORGANISM` | ตัดโค้ดขึ้นต้น `.`/NG (Gram/No growth) |
+| กลุ่มสิ่งส่งตรวจ | `CSOURCE_A` | Respiratory Tract / Hemoculture-Blood / Urine … |
+| วอร์ด | `CWARD` | ชื่อวอร์ด |
+| วันเก็บสิ่งส่งตรวจ | `SPCDATE` | ใช้แบ่งช่วงรายปี/rolling |
+| ผลยา | 28 คอลัมน์ (`MEM`,`CRO`,`CAZ`,…) | ค่า **S/I/R/N** |
+
+isolate จริง = `METHOD=O` (ตัวกรองใน `daily_etl.filter_real_isolates`). `%S = S/(S+I+R+N)`,
+Colistin = `I/(I+R)`, intrinsic (เช่น Acinetobacter–Ertapenem) = "R", N<30 ติดธง `lt30`.
+
+## ต่อ step [4] เข้า master_daily.bat
+
+วาง repo ไว้ที่ `D:\antibiogram` แล้วเติมท้าย `master_daily.bat` (ก่อน `MASTER DONE`):
 
 ```bat
-cd /d D:\antibiogram
-python daily_etl.py --dbf-dir D:\mlab_dbf --out D:\amr\antibiogram_summary.csv
-REM + แยก CAI/HAI (ถ้ามี qr1020):   --his-dir D:\qr1020
-REM + ขึ้น Google Sheet:            --sheet-id <id> --creds D:\amr\service_account.json
+REM ========== [4] Antibiogram cumulative + rolling ==========
+echo [%date% %time%] [4] antibiogram ETL...>> "%LOG%"
+python D:\antibiogram\daily_etl.py --dbf-dir "<cfg.DBF_FOLDER เดียวกับ daily report>" ^
+   --out "D:\HIS_export\antibiogram_summary.csv" >> "%LOG%" 2>&1
 ```
 
-แต่ละรอบจะคำนวณใหม่ทั้งหมดสำหรับ **ทุกปีปฏิทินที่มีในโฟลเดอร์ + 12 เดือนล่าสุด (rolling)**
-× กลุ่ม **All / รายสิ่งส่งตรวจ / CAI / HAI** แล้วเขียนทับ output (idempotent — รันกี่รอบก็ได้ผลเท่ากัน).
+ไม่มี GUI automation → ไม่ชนกับ step 1–3 (วางท้ายสุดได้เลย). `<cfg.DBF_FOLDER>` = ค่าเดียวกับใน `config.py`
+ที่ `mlab_daily_report.py` ใช้ (ตัวแปร `DBF_FOLDER`).
 
-> **หน้าต่างข้อมูล:** ให้โฟลเดอร์ `--dbf-dir` มี DBF ย้อนหลังครบช่วงที่อยากรายงาน
-> (เช่น export ทั้งปี + เดือนล่าสุด). rolling 12 เดือนนับถึง "วันล่าสุดในข้อมูล" อัตโนมัติ —
-> พอมีไฟล์ของวันใหม่เข้ามา หน้าต่างก็ขยับเองวันต่อวัน.
+ทดสอบ standalone ก่อน: แก้ path ใน `run_daily.bat` แล้วดับเบิลคลิก (log อยู่ `D:\antibiogram\logs\`).
 
-## ตั้ง Task Scheduler (รันทุกวัน)
+## (ไม่บังคับ) แยก CAI/HAI ด้วย qr1020
 
-1. แก้ path 4 ตัวบนหัว `run_daily.bat` ให้ตรงเครื่อง (PROJECT / DBF_DIR / HIS_DIR / OUT; SHEET_ID ถ้าจะขึ้น Sheet)
-2. เปิด **Task Scheduler → Create Task**
-   - General: ตั้งชื่อ `Antibiogram Daily`; เลือก *Run whether user is logged on or not*
-   - Triggers → New: *Daily* เวลาเช้า (เช่น 07:00 หลัง MLAB ออกไฟล์ของวัน)
-   - Actions → New: *Start a program* = `D:\antibiogram\run_daily.bat`
-   - Conditions: ติ๊กออก *Start only if on AC power* (ถ้าเป็นพีซี)
-3. กด **Run** หนึ่งครั้งเพื่อทดสอบ แล้วดู log ที่ `D:\antibiogram\logs\etl_YYYYMMDD.log`
+`his_auto.py` เซฟ `qr1020_YYYYMMDD.xls` ไว้ที่ `H.EXPORT_DIR` อยู่แล้ว. เพิ่ม `--his-dir "<EXPORT_DIR>"`
+ให้ `daily_etl.py` → จะได้กลุ่ม CAI/HAI เพิ่ม. `daily_etl` ตัด 2 หลักหน้า HN ของ qr1020 ให้ตรง DBF อัตโนมัติ.
+⚠️ ก่อนใช้จริง ตรวจ 2 จุด: (1) ปี พ.ศ./ค.ศ. ในคอลัมน์ "วันที่ลงทะเบียน" (ถ้าเป็น พ.ศ. ต้องลบ 543 ก่อน
+เทียบ SPCDATE) (2) `.xls` 65,536 แถว limit. เริ่มด้วยกลุ่ม All/specimen ก่อน แล้วค่อยเปิด CAI/HAI.
 
-(เทียบเท่า schtasks:)
-```bat
-schtasks /Create /TN "Antibiogram Daily" /TR "D:\antibiogram\run_daily.bat" /SC DAILY /ST 07:00 /RL HIGHEST
-```
+## (ไม่บังคับ) ขึ้น Google Sheet ให้แดชบอร์ด
 
-## เชื่อมต่อให้เว็บแอป/แดชบอร์ดอ่าน
+- ง่ายสุด: ให้แดชบอร์ด/สคริปต์อ่าน **CSV** ตรง ๆ
+- หรือ `--sheet-id <id> --creds <service_account.json>` → เขียนทับ tab `Antibiogram` ด้วย **gspread**
+  (คนละทางกับ GAS Web App เดิม — ไม่ต้องแก้ GAS; แค่แชร์ Sheet ให้ service account)
+- ถ้าจะใช้ GAS เดิม: เพิ่ม action ใหม่ฝั่ง GAS รับ rows ของตารางสรุป (ยังไม่ทำในชุดนี้)
 
-- **CSV** → ให้แดชบอร์ด/สคริปต์ build อ่านไฟล์นี้
-- **Google Sheet** (ใส่ `--sheet-id --creds`) → เขียนทับ tab `Antibiogram`; แดชบอร์ดโหลดด้วย gviz JSONP
-  ตามที่ระบุใน [`ROLLING_ANTIBIOGRAM_PLAN.md`](ROLLING_ANTIBIOGRAM_PLAN.md) *Part B*
+## ตรวจความถูกต้อง (ทำครั้งแรกหลัง backfill)
 
-## ตรวจความถูกต้อง (ทำครั้งแรก)
-
-เทียบกับ **Antibiogram Lerdsin 2025.xlsx**: A. baumannii–MEM 18% (N≈517),
-K. pneumoniae–MEM 82% (N≈927), E. coli–CRO 53% (N≈1101) — %S ควรต่าง ≤ ±2 จุด.
-ไม่ตรง → ตรวจ field map ใน `config/mlab_profile.json`, `--drop-sources` (สิ่งส่งตรวจ screening),
-และเกณฑ์ CAI/HAI (`hai_threshold_days`, qr1020).
-
-## ถ้าอยากให้ผม (Claude) ตั้งให้ถึงเครื่องเลย
-
-เครื่อง patho13 ต้องออนไลน์และเปิด **Remote Control** (Claude desktop → Settings → Claude Code →
-Remote Control) โดยแชร์โฟลเดอร์โปรเจกต์ที่เป็น git repo. เมื่อเชื่อมแล้วผมเข้าไปวางไฟล์/ตั้ง Task ให้ได้.
-ตอนนี้ยังไม่มีเครื่องเชื่อมเข้ามา จึงส่งเป็นชุดไฟล์พร้อมติดตั้งให้ก่อน.
+เทียบ **Antibiogram Lerdsin 2025.xlsx**: A.baumannii–MEM 18% (N≈517),
+K.pneumoniae–MEM 82% (N≈927), E.coli–CRO 53% (N≈1101) — %S ควรต่าง ≤ ±2 จุด.
+ไม่ตรง → ตรวจช่วง backfill (ครบทั้งปีไหม), การตัด screening (`--drop-sources`), และเกณฑ์ CAI/HAI.

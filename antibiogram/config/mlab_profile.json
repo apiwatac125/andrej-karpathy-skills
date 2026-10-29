@@ -2,8 +2,9 @@
   "name": "MLAB (Lerdsin)",
   "col_map": {
     "hn": "HN",
-    "organism": "ORGANISM",
-    "specimen": "CSOURCE",
+    "organism": "CORGANISM",
+    "organism_code": "ORGANISM",
+    "specimen": "CSOURCE_A",
     "ward": "CWARD",
     "collect_datetime": "SPCDATE"
   },
