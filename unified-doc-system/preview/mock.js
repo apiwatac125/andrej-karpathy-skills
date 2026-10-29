@@ -113,6 +113,31 @@ function __start(api, app) {
     saveUser_(u);
   });
 
+  // คลังระบบจัดซื้อ (SP-MT-07) ตัวอย่าง ให้แชทบอทมีเอกสารให้ค้น — ชื่อบริษัทและเอกสารเป็นตัวอย่างทั้งหมด
+  // ไม่ตั้ง SPMT07_APP_URL จึงไม่มีลิงก์ "เปิดเอกสาร" และเมนูระบบจัดซื้อขึ้นว่ายังไม่ได้เชื่อมต่อ
+  var spmt = SpreadsheetApp.create();
+  __props.SPMT07_SHEET_ID = spmt.getId();
+  function co(names) { return JSON.stringify(names.map(function (n) { return { name: n }; })); }
+  var sub = spmt.insertSheet('Submissions');
+  sub.appendRow(['submission_id', 'timestamp', 'form_type', 'unit', 'form_label', 'product_offered',
+    'companies_json', 'winner', 'status', 'supervisor_signature', 'token']);
+  sub.appendRow(['s1', new Date(2026, 8, 12), 'vendor_product', 'ห้องจุลชีววิทยาคลินิก', 'ผู้ขายและผลิตภัณฑ์',
+    'ขวดเพาะเชื้อในเลือด (Hemoculture bottle)', co(['บริษัท ตัวอย่าง ไดแอกนอสติกส์ จำกัด', 'บริษัท สาธิต เมดิคอล จำกัด']),
+    'บริษัท ตัวอย่าง ไดแอกนอสติกส์ จำกัด', 'อนุมัติแล้ว', 'data:image/png;base64,AAAA', 't1']);
+  sub.appendRow(['s2', new Date(2026, 9, 20), 'calibration_lab', 'ทีมเครื่องมือ', 'บริษัทสอบเทียบเครื่องมือ (Calibration Laboratory)',
+    'สอบเทียบปิเปตอัตโนมัติ', co(['บริษัท ทดลอง คาลิเบรชั่น จำกัด', 'บริษัท สาธิต เมดิคอล จำกัด']),
+    'บริษัท ทดลอง คาลิเบรชั่น จำกัด', 'รอหัวหน้ากลุ่มงานอนุมัติ', '', 't2']);
+  sub.appendRow(['s3', new Date(2026, 6, 3), 'referral_lab', 'ห้องชีวโมเลกุล', 'ห้องปฏิบัติการรับตรวจต่อ (Referral Lab)',
+    'ตรวจยีนดื้อยา carbapenemase', co(['แล็บตัวอย่าง รับตรวจต่อ']), 'แล็บตัวอย่าง รับตรวจต่อ', 'ไม่อนุมัติ (หัวหน้างาน)', '', 't3']);
+  var sum = spmt.insertSheet('Summaries');
+  sum.appendRow(['summary_id', 'created_at', 'eval_type', 'unit', 'unit_display', 'year_label', 'companies_json',
+    'total_count', 'pass_count', 'fail_count', 'status', 'pdf_url', 'token']);
+  sum.appendRow(['m1', new Date(2026, 0, 15), 'vendor', 'ห้องจุลชีววิทยาคลินิก', 'งานจุลชีววิทยาคลินิก', '2568',
+    co(['บริษัท ตัวอย่าง ไดแอกนอสติกส์ จำกัด', 'บริษัท สาธิต เมดิคอล จำกัด', 'บริษัท ทดลอง ซัพพลาย จำกัด']),
+    3, 2, 1, 'อนุมัติแล้ว', '', 'k1']);
+  sum.appendRow(['m2', new Date(2026, 1, 10), 'calibration', 'ทีมเครื่องมือ', 'ทีมเครื่องมือ', '2568',
+    co(['บริษัท ทดลอง คาลิเบรชั่น จำกัด']), 1, 1, 0, 'รอหัวหน้างานอนุมัติ', '', 'k2']);
+
   function runner(ok, fail) {
     var r = {
       withSuccessHandler: function (f) { return runner(f, fail); },

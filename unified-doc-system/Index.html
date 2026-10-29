@@ -74,12 +74,14 @@
         <b>แชทบอท</b>
         <button type="button" class="icon-btn" id="bot-close" aria-label="ปิดแชทบอท">&times;</button>
       </div>
-      <div class="bot-body">
-        <div class="bot-msg">ช่องนี้เตรียมไว้สำหรับแชทบอทช่วยค้นหาเอกสารและตอบคำถามการใช้ระบบ จะเปิดใช้งานในขั้นถัดไป</div>
+      <div class="bot-body" id="bot-log">
+        <div class="bot-msg">พิมพ์คำที่ต้องการค้นในคลังเอกสาร เช่น ชื่อบริษัท ชื่อสินค้า ชื่องาน หรือปี พ.ศ.
+          ระบบค้นเฉพาะคลังที่คุณมีสิทธิ์เปิด</div>
       </div>
-      <div class="bot-input">
-        <input type="text" id="bot-q" placeholder="ยังไม่เปิดใช้งาน" disabled>
-      </div>
+      <form class="bot-input" id="bot-form">
+        <input type="text" id="bot-q" placeholder="ค้นหาเอกสาร..." autocomplete="off" aria-label="คำค้นหา">
+        <button type="submit" class="primary" id="bot-send">ค้นหา</button>
+      </form>
     </div>
   </div>
 
@@ -148,10 +150,14 @@
   // ============================================================
   // เข้าสู่ระบบ / ออกจากระบบ
   // ============================================================
+  var BOT_GREETING = $('bot-log').innerHTML;
+
   function showLogin(msg) {
     shell = null;
     current = null;
     $('frame').src = 'about:blank';
+    $('bot-log').innerHTML = BOT_GREETING;   // ไม่ให้ผู้ใช้คนถัดไปเห็นผลค้นของคนก่อน
+    setBot(false);
     $('boot').hidden = true;
     $('app').hidden = true;
     $('login').hidden = false;
@@ -507,14 +513,76 @@
   }
 
   // ============================================================
-  // แชทบอท — ตอนนี้เป็นช่องสำรองตามแบบร่าง ยังไม่ได้เชื่อมระบบตอบคำถาม
+  // แชทบอท — ค้นเอกสารในคลัง (searchDocs ใน Search.gs)
   // ============================================================
   function setBot(open) {
     $('bot').hidden = !open;
     $('bot-btn').setAttribute('aria-expanded', String(open));
+    if (open) $('bot-q').focus();
   }
   $('bot-btn').onclick = function () { setBot($('bot').hidden); };
   $('bot-close').onclick = function () { setBot(false); };
+
+  function botSay(mine, html) {
+    var el = document.createElement('div');
+    el.className = 'bot-msg' + (mine ? ' me' : '');
+    el.innerHTML = html;
+    $('bot-log').appendChild(el);
+    $('bot-log').scrollTop = $('bot-log').scrollHeight;
+    return el;
+  }
+
+  $('bot-form').onsubmit = function (e) {
+    e.preventDefault();
+    var q = $('bot-q').value.trim();
+    if (!q) return;
+    $('bot-q').value = '';
+    botSay(true, esc(q));
+    var reply = botSay(false, '<span class="mini">กำลังค้น...</span>');
+    call('searchDocs', [token, q], function (res) {
+      reply.innerHTML = botReply(res);
+      $('bot-log').scrollTop = $('bot-log').scrollHeight;
+    }, function (err) {
+      reply.textContent = 'ค้นไม่สำเร็จ: ' + err.message;
+    });
+  };
+
+  function botReply(res) {
+    if (res.tooShort) return 'พิมพ์คำค้นอย่างน้อย 2 ตัวอักษร';
+    if (!res.sources.length) {
+      return res.missing.length
+        ? 'ยังไม่ได้เชื่อม' + esc(res.missing.join(', ')) + 'กับแชทบอท กรุณาแจ้งผู้ดูแลระบบ'
+        : 'ระดับสิทธิ์ของคุณยังไม่มีคลังที่ค้นจากแชทบอทได้';
+    }
+    if (!res.total) {
+      return 'ไม่พบเอกสารที่ตรงกับ "' + esc(res.query) + '" ใน' + esc(res.sources.join(', ')) +
+        '<div class="mini">ลองใช้คำที่สั้นลง หรือค้นด้วยชื่อบริษัทอย่างเดียว</div>';
+    }
+    return 'พบ ' + res.total + ' รายการ' + (res.total > res.hits.length ? ' แสดง ' + res.hits.length + ' รายการแรก' : '') +
+      res.hits.map(function (h) { return hitHtml(h, res.terms); }).join('');
+  }
+
+  function hitHtml(h, terms) {
+    var cls = h.status === 'อนุมัติแล้ว' ? 'ok' : (h.status.indexOf('ไม่อนุมัติ') > -1 ? 'bad' : 'wait');
+    return '<div class="hit">' +
+      '<div class="mini">' + esc(h.kind) + '</div>' +
+      '<b>' + mark(h.title, terms) + '</b>' +
+      '<div class="mini">' + esc(h.meta) + '</div>' +
+      (h.detail ? '<div>' + esc(h.detail) + '</div>' : '') +
+      (h.companies.length ? '<div class="mini">ตรงกับ: ' + h.companies.map(function (c) { return mark(c, terms); }).join(', ') + '</div>' : '') +
+      '<div class="hit-links"><span class="status ' + cls + '">' + esc(h.status) + '</span>' +
+      h.links.map(function (l) {
+        return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + '</a>';
+      }).join('') + '</div></div>';
+  }
+
+  /** ไฮไลต์คำค้นในข้อความ — escape ก่อน แล้วแทนทุกคำในรอบเดียว กันไปโดน <mark> ที่ใส่ไปแล้ว */
+  function mark(text, terms) {
+    var re = new RegExp(terms.map(function (t) {
+      return esc(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }).join('|'), 'gi');
+    return esc(text).replace(re, function (m) { return '<mark>' + m + '</mark>'; });
+  }
 
   // ============================================================
   // เริ่มต้น

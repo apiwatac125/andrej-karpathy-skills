@@ -17,6 +17,7 @@
     --warn: #b45309;
     --warn-soft: #fff6e5;
     --warn-line: #f0d08a;
+    --mark: #fff3bf;
     --danger: #b42318;
     --shade: rgba(26, 26, 46, .38);
     --side-w: 290px;
@@ -218,9 +219,24 @@
     box-shadow: 0 4px 10px var(--shade), 0 24px 48px -20px var(--shade);
   }
   .bot-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); }
-  .bot-body { padding: 14px; min-height: 130px; }
-  .bot-msg { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
-  .bot-input { padding: 10px 14px; border-top: 1px solid var(--border); }
+  .bot-body {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px; min-height: 130px; max-height: min(60vh, 480px); overflow-y: auto;
+  }
+  .bot-msg { background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 15px; overflow-wrap: anywhere; }
+  .bot-msg.me { align-self: flex-end; max-width: 85%; background: var(--brand-soft); color: var(--ink); }
+  .bot-input { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); }
+  .bot-input input { flex: 1 1 auto; min-width: 0; }
+  .bot-input .primary { padding: 8px 14px; font-size: 15px; }
+  .hit { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .hit b { display: block; line-height: 1.35; }
+  .hit-links { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-top: 6px; font-size: 14px; }
+  .hit-links a { color: var(--brand); }
+  .status { font-size: 13px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); white-space: nowrap; }
+  .status.ok { color: var(--ok); border-color: var(--ok); }
+  .status.wait { color: var(--warn); border-color: var(--warn-line); background: var(--warn-soft); }
+  .status.bad { color: var(--danger); border-color: var(--danger); }
+  mark { background: var(--mark); color: inherit; padding: 0 1px; border-radius: 2px; }
 
   /* ---------- จอแคบ: แถบเมนูกลายเป็นลิ้นชักทับเนื้อหา ---------- */
   @media (max-width: 860px) {

@@ -42,9 +42,13 @@ var MENU = [
     ]
   },
   {
+    // ระบบ SP-MT-07 คัดเลือกและประเมินผู้ขาย (repo Unlucky125/spmt07-webapp) — deploy แยกโปรเจกต์
     group: 'ระบบจัดซื้อ',
     items: [
-      { id: 'vendor-eval', label: 'ประเมินผู้ขาย', minLevel: 3 }
+      { id: 'spmt-select', label: 'คัดเลือกผู้ขาย / ผู้ให้บริการ', minLevel: 2, app: 'SPMT07_APP_URL', page: '' },
+      { id: 'spmt-eval', label: 'ประเมินผู้ขาย', minLevel: 2, app: 'SPMT07_APP_URL', page: 'summary' },
+      { id: 'spmt-archive', label: 'คลังเอกสาร', minLevel: 2, app: 'SPMT07_APP_URL', page: 'archive' },
+      { id: 'spmt-formtools', label: 'ดรอปดาวน์รายชื่อบริษัท', minLevel: 3, app: 'SPMT07_APP_URL', page: 'formtools' }
     ]
   },
   { slot: true },
