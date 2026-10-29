@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-page="audit" data-audit="<?= auditId ?>">
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="audit" data-audit="<?= auditId ?>">
 <div class="wrap wide">
   <?!= include('Nav') ?>
   <div id="content" class="msg wait">กำลังโหลด...</div>
@@ -129,7 +129,7 @@
         if (res.selfAudit) {
           setMsg('a-msg', 'เตือน: หัวหน้าทีมผู้ตรวจกับผู้รับการตรวจเป็นคนเดียวกัน — ISO 15189 ข้อ 8.8 กำหนดว่าผู้ตรวจต้องไม่ตรวจงานตัวเอง', 'err');
         }
-        location.href = BASE_URL + '?page=audit&id=' + res.auditId;
+        WiNav.go(BASE_URL + '?page=audit&id=' + res.auditId);
       }).withFailureHandler(function (err) {
         btn.disabled = false;
         setMsg('a-msg', err.message, 'err');
@@ -323,7 +323,7 @@
 
     each('.open-capa', function (b) {
       b.onclick = function () {
-        location.href = BASE_URL + '?page=capa&finding=' + b.getAttribute('data-id');
+        WiNav.go(BASE_URL + '?page=capa&finding=' + b.getAttribute('data-id'));
       };
     });
 

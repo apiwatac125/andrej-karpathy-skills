@@ -25,7 +25,6 @@ var ADMIN_LEVEL = 5;
 
 /** ลิงก์เชื่อมระบบอื่น (เก็บเป็น Script Property ชื่อตาม key) ที่ผู้ดูแลระบบแก้ได้ในหน้า "ตั้งค่าระบบ" */
 var SETTING_LINKS = [
-  { key: 'WI_APP_URL', label: 'URL เว็บแอประบบ WI', hint: 'ลงท้ายด้วย /exec' },
   { key: 'SPMT07_APP_URL', label: 'URL เว็บแอประบบจัดซื้อ (SP-MT-07)', hint: 'ลงท้ายด้วย /exec' },
   { key: 'SPMT07_SHEET_ID', label: 'id สเปรดชีต SP-MT-07 Selection Submissions', hint: 'ใช้กับแชทบอทค้นคลัง' }
 ];
@@ -35,18 +34,22 @@ var SETTING_LINKS = [
  *   minLevel  ระดับสิทธิ์ต่ำสุดที่เห็นและเปิดเมนูนี้ได้
  *   app+page  ระบบที่ deploy แยกโปรเจกต์ — app = ชื่อ Script Property ที่เก็บ URL เว็บแอป (/exec),
  *             page = ค่า ?page= ของระบบนั้น
- *   file      หน้าที่อยู่ในโปรเจกต์นี้เอง (ชื่อไฟล์ .html) — ใช้เมื่อย้ายระบบเข้ามารวมในโปรเจกต์เดียว
- *   ไม่มีทั้ง app และ file = ยังไม่มีระบบ แสดงหน้า "อยู่ระหว่างพัฒนา"
+ *   wi        หน้าของระบบ WI ที่รวมอยู่ในโปรเจกต์นี้ (ค่า ?page= ของ WI, 'home' = หน้ารวม) — ดู routeWi_ ใน Shell.gs
+ *   file      หน้าที่อยู่ในโปรเจกต์นี้เอง (ชื่อไฟล์ .html) ที่ระบบหลักเปิดให้พร้อมตัวแปร user/token
+ *   ไม่มีทั้ง app / wi / file = ยังไม่มีระบบ แสดงหน้า "อยู่ระหว่างพัฒนา"
  *   { slot: true } = ช่องสำรองสำหรับระบบที่จะเพิ่มภายหลัง — แทนที่ด้วยกลุ่มเมนูจริงเมื่อพร้อม
  */
 var MENU = [
   {
+    // ระบบ WI Document Control v2.2 — รวมอยู่ในโปรเจกต์นี้ (Code.gs, DocRequest.gs, …) ดู wi/CLAUDE.md
     group: 'WI, SP, SOP',
     items: [
-      { id: 'wi-dar', label: 'ส่งคำขอแก้ไขเอกสาร', minLevel: 2, app: 'WI_APP_URL', page: 'dar' },
-      { id: 'wi-upload', label: 'ส่งเอกสารที่แก้พร้อมลงนาม', minLevel: 2, app: 'WI_APP_URL', page: 'upload' },
-      { id: 'wi-status', label: 'ติดตามสถานะ', minLevel: 2, app: 'WI_APP_URL', page: 'home' },
-      { id: 'wi-archive', label: 'คลังเอกสาร', minLevel: 1, app: 'WI_APP_URL', page: 'archive' }
+      { id: 'wi-dar', label: 'ส่งคำขอแก้ไขเอกสาร', minLevel: 2, wi: 'dar' },
+      { id: 'wi-upload', label: 'ส่งเอกสารที่แก้พร้อมลงนาม', minLevel: 2, wi: 'upload' },
+      { id: 'wi-status', label: 'ติดตามสถานะ', minLevel: 2, wi: 'home' },
+      { id: 'wi-archive', label: 'คลังเอกสาร', minLevel: 1, wi: 'archive' },
+      { id: 'wi-audit', label: 'ตรวจติดตามภายใน', minLevel: 3, wi: 'audit' },
+      { id: 'wi-capa', label: 'CAPA', minLevel: 2, wi: 'capa' }
     ]
   },
   {

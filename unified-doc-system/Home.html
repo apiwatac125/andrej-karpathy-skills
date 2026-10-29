@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-page="home">
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="home">
 <div class="wrap wide">
   <?!= include('Nav') ?>
 
@@ -29,12 +29,14 @@
   function render(d) {
     var html = '';
 
-    if (!d.me.known) {
+    // ในกรอบของระบบงานเอกสาร ผู้ใช้ผ่าน login ของหน้าหลักมาแล้ว — แถบนี้จะพาเข้าใจผิด
+    var embedded = document.body.getAttribute('data-embed') === '1';
+    if (!d.me.known && !embedded) {
       html += '<div class="warnbar"><b>โหมดเปิดกว้าง</b> — web app นี้ deploy แบบ "Anyone" ' +
         'ระบบจึงไม่รู้ว่าใครเป็นผู้ใช้และ<b>ไม่บังคับสิทธิ์ตามหน้าที่</b> ' +
         'ถ้าต้องการคุมสิทธิ์จริง ให้เปลี่ยน appsscript.json เป็น access: "DOMAIN" ' +
         'ลงทะเบียนผู้ใช้ในแท็บ People แล้วตั้ง Config.enforce_roles = TRUE</div>';
-    } else if (!d.me.enforce) {
+    } else if (!d.me.enforce && !embedded) {
       html += '<div class="warnbar">ลงชื่อเข้าใช้เป็น <b>' + esc(d.me.email) + '</b> — ' +
         'ยังไม่ได้เปิดการบังคับสิทธิ์ (Config.enforce_roles = FALSE)</div>';
     }

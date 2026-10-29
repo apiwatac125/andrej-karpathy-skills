@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-page="dar"
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="dar"
       data-dar="<?= darId ?>" data-token="<?= token ?>" data-capa="<?= capaId ?>">
 <div class="wrap wide">
   <?!= include('Nav') ?>
@@ -228,7 +228,7 @@
     btn.disabled = true;
     setMsg('d-msg', 'กำลังบันทึก...', 'wait');
     google.script.run.withSuccessHandler(function (res) {
-      location.href = BASE_URL + '?page=dar&id=' + res.darId;
+      WiNav.go(BASE_URL + '?page=dar&id=' + res.darId);
     }).withFailureHandler(function (err) {
       btn.disabled = false;
       setMsg('d-msg', err.message, 'err');

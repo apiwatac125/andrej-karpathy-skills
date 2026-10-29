@@ -4,7 +4,7 @@
   <base target="_top">
   <meta charset="utf-8">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap">
-  <?!= include('Styles'); ?>
+  <?!= include('ShellStyles'); ?>
 </head>
 <body>
   <div id="boot" class="boot">กำลังโหลด...</div>
@@ -87,7 +87,8 @@
   </div>
 
 <script>
-  var APP = <?!= JSON.stringify(app) ?>;
+  var APP = <?!= appJson ?>;
+  var NEXT = <?!= nextJson ?>;   // หน้าของ WI ที่รอเปิดหลัง login (เปิดลิงก์มาตอนยังไม่ได้ login)
   var TOKEN_KEY = 'docsys.token';
   var token = null;
   var shell = null;      // ผลจาก getShell: ผู้ใช้ + เมนูที่เปิดได้
@@ -197,7 +198,13 @@
       $('lnk-settings').hidden = !data.isAdmin;
       drawMenu();
       setMenu(!narrow.matches);
-      openBuiltin('welcome');
+      if (NEXT) {
+        var next = NEXT;
+        NEXT = null;
+        openWiPage(next);
+      } else {
+        openBuiltin('welcome');
+      }
     }, function (err) {
       keepToken(null);
       showLogin(err.message);
@@ -264,6 +271,39 @@
   // ============================================================
   // กรอบเนื้อหา: หน้าระบบที่เลือก (iframe) หรือหน้าที่ระบบหลักวาดเอง (#view)
   // ============================================================
+  /** เปิดหน้าของ WI ตามพารามิเตอร์ (page, id, …) — server ตรวจสิทธิ์และแนบ session ให้ */
+  function openWiPage(params) {
+    current = null;
+    showView('<div class="msg wait">กำลังเปิด...</div>');
+    call('openWi', [token, params], function (res) {
+      current = res.item;
+      markActive(res.item);
+      showFrame(findItem(res.item), res.url);
+    }, function (err) {
+      showView('<div class="notice">' + esc(err.message) + '</div>');
+    });
+  }
+
+  // ลิงก์ภายในหน้า WI ส่งมาให้เปิดในกรอบเดิม (WiNav ใน Nav.html) — รับเฉพาะข้อความจากกรอบเนื้อหาของหน้านี้
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!shell || !d || d.type !== 'wi-open' || typeof d.url !== 'string') return;
+    if (!fromFrame(e.source) || d.url.indexOf(shell.baseUrl) !== 0) return;
+    var params = {};
+    new URL(d.url).searchParams.forEach(function (v, k) { params[k] = v; });
+    openWiPage(params);
+  });
+
+  /** ข้อความมาจากในกรอบเนื้อหาหรือไม่ — ไล่ .parent ขึ้นไป (อ่านข้ามโดเมนได้) จนเจอกรอบของเรา */
+  function fromFrame(src) {
+    var mine = $('frame').contentWindow;
+    for (var w = src; w; w = w.parent) {
+      if (w === mine) return true;
+      if (w === w.parent) return false;
+    }
+    return false;
+  }
+
   function openItem(id) {
     var hit = findItem(id);
     if (!hit) return;
@@ -630,17 +670,16 @@
 
   function botReply(res) {
     if (res.tooShort) return 'พิมพ์คำค้นอย่างน้อย 2 ตัวอักษร';
-    if (!res.sources.length) {
-      return res.missing.length
-        ? 'ยังไม่ได้เชื่อม' + esc(res.missing.join(', ')) + 'กับแชทบอท กรุณาแจ้งผู้ดูแลระบบ'
-        : 'ระดับสิทธิ์ของคุณยังไม่มีคลังที่ค้นจากแชทบอทได้';
-    }
+    var notes = (res.missing.length
+      ? '<div class="mini">ยังไม่ได้เชื่อม' + esc(res.missing.join(', ')) + 'กับแชทบอท กรุณาแจ้งผู้ดูแลระบบ</div>' : '') +
+      res.notes.map(function (n) { return '<div class="mini">' + esc(n) + '</div>'; }).join('');
+    if (!res.sources.length) return notes || 'ระดับสิทธิ์ของคุณยังไม่มีคลังที่ค้นจากแชทบอทได้';
     if (!res.total) {
       return 'ไม่พบเอกสารที่ตรงกับ "' + esc(res.query) + '" ใน' + esc(res.sources.join(', ')) +
-        '<div class="mini">ลองใช้คำที่สั้นลง หรือค้นด้วยชื่อบริษัทอย่างเดียว</div>';
+        '<div class="mini">ลองใช้คำที่สั้นลง หรือค้นด้วยชื่อบริษัท / เลขที่เอกสารอย่างเดียว</div>' + notes;
     }
     return 'พบ ' + res.total + ' รายการ' + (res.total > res.hits.length ? ' แสดง ' + res.hits.length + ' รายการแรก' : '') +
-      res.hits.map(function (h) { return hitHtml(h, res.terms); }).join('');
+      res.hits.map(function (h) { return hitHtml(h, res.terms); }).join('') + notes;
   }
 
   function hitHtml(h, terms) {
@@ -649,7 +688,7 @@
       '<div class="mini">' + esc(h.kind) + '</div>' +
       '<b>' + mark(h.title, terms) + '</b>' +
       '<div class="mini">' + esc(h.meta) + '</div>' +
-      (h.detail ? '<div>' + esc(h.detail) + '</div>' : '') +
+      (h.detail ? '<div>' + mark(h.detail, terms) + '</div>' : '') +
       (h.companies.length ? '<div class="mini">ตรงกับ: ' + h.companies.map(function (c) { return mark(c, terms); }).join(', ') + '</div>' : '') +
       '<div class="hit-links"><span class="status ' + cls + '">' + esc(h.status) + '</span>' +
       h.links.map(function (l) {

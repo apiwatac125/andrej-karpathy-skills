@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-page="capa"
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="capa"
       data-capa="<?= capaId ?>" data-token="<?= token ?>" data-finding="<?= findingId ?>">
 <div class="wrap wide">
   <?!= include('Nav') ?>
@@ -133,7 +133,7 @@
     btn.disabled = true;
     setMsg('m-msg', 'กำลังบันทึก...', 'wait');
     google.script.run.withSuccessHandler(function (res) {
-      location.href = BASE_URL + '?page=capa&id=' + res.capaId;
+      WiNav.go(BASE_URL + '?page=capa&id=' + res.capaId);
     }).withFailureHandler(function (err) {
       btn.disabled = false;
       setMsg('m-msg', err.message, 'err');
@@ -181,7 +181,7 @@
         btn.disabled = true;
         setMsg('n-msg', 'กำลังบันทึก...', 'wait');
         google.script.run.withSuccessHandler(function (res) {
-          location.href = BASE_URL + '?page=capa&id=' + res.capaId;
+          WiNav.go(BASE_URL + '?page=capa&id=' + res.capaId);
         }).withFailureHandler(function (err) {
           btn.disabled = false;
           setMsg('n-msg', err.message, 'err');

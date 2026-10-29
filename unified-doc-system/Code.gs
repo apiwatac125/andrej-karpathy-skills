@@ -104,13 +104,18 @@ const DEFAULT_UNITS = [
 // 1. ROUTER
 // ============================================================
 
-function doGet(e) {
+/**
+ * หน้าของระบบ WI — doGet ตัวจริงอยู่ใน Shell.gs (ระบบงานเอกสาร) ซึ่งตรวจ login แล้วจึงเรียกมาที่นี่
+ * embed = true เมื่อเปิดในกรอบเนื้อหาของหน้าหลัก: หน้าเว็บได้ <body data-embed="1"> แล้ว Nav.html
+ * ซ่อนเมนู/ช่องค้นของ WI และส่งลิงก์ไปหน้าอื่นให้หน้าหลักเปิดในกรอบเดิม
+ */
+function wiDoGet_(e, embed) {
   const page = e && e.parameter && e.parameter.page;
 
   // หน้าที่มีลิงก์ข้ามหน้าต้อง render ผ่าน template เพื่อฝัง URL เต็มของ web app
   // (HtmlService เสิร์ฟในกรอบ iframe บน googleusercontent.com — ลิงก์ "?page=x" แบบ relative วิ่งผิดโดเมน)
   if (page === 'dar') {
-    const darTpl = HtmlService.createTemplateFromFile('Dar');
+    const darTpl = wiTemplate_('Dar', embed);
     darTpl.baseUrl = ScriptApp.getService().getUrl();
     darTpl.darId = (e.parameter.id || '');
     darTpl.token = (e.parameter.token || '');
@@ -121,7 +126,7 @@ function doGet(e) {
   }
 
   if (page === 'upload') {
-    const upTpl = HtmlService.createTemplateFromFile('Upload');
+    const upTpl = wiTemplate_('Upload', embed);
     upTpl.baseUrl = ScriptApp.getService().getUrl();
     upTpl.darId = (e.parameter.dar || ''); // อัปโหลดตามใบขออนุมัติที่ผ่านแล้ว
     return upTpl.evaluate()
@@ -130,7 +135,7 @@ function doGet(e) {
   }
 
   if (page === 'audit') {
-    const auTpl = HtmlService.createTemplateFromFile('Audit');
+    const auTpl = wiTemplate_('Audit', embed);
     auTpl.baseUrl = ScriptApp.getService().getUrl();
     auTpl.auditId = (e.parameter.id || '');
     auTpl.token = (e.parameter.token || '');
@@ -140,7 +145,7 @@ function doGet(e) {
   }
 
   if (page === 'capa') {
-    const caTpl = HtmlService.createTemplateFromFile('Capa');
+    const caTpl = wiTemplate_('Capa', embed);
     caTpl.baseUrl = ScriptApp.getService().getUrl();
     caTpl.capaId = (e.parameter.id || '');
     caTpl.token = (e.parameter.token || '');
@@ -151,7 +156,7 @@ function doGet(e) {
   }
 
   if (page === 'sign') {
-    const signTpl = HtmlService.createTemplateFromFile('Sign');
+    const signTpl = wiTemplate_('Sign', embed);
     signTpl.docId = (e.parameter.id || '');
     signTpl.token = (e.parameter.token || '');
     signTpl.baseUrl = ScriptApp.getService().getUrl();
@@ -161,7 +166,7 @@ function doGet(e) {
   }
 
   if (page === 'archive') {
-    const arcTpl = HtmlService.createTemplateFromFile('Archive');
+    const arcTpl = wiTemplate_('Archive', embed);
     arcTpl.baseUrl = ScriptApp.getService().getUrl();
     return arcTpl.evaluate()
       .setTitle('คลังเอกสารคุณภาพ')
@@ -169,11 +174,17 @@ function doGet(e) {
   }
 
   // ค่าตั้งต้น v2.0 = หน้ารวม (เอกสาร + Audit + CAPA) ส่วนหน้าส่งเอกสารย้ายไป ?page=upload
-  const tpl = HtmlService.createTemplateFromFile('Home');
+  const tpl = wiTemplate_('Home', embed);
   tpl.baseUrl = ScriptApp.getService().getUrl();
   return tpl.evaluate()
     .setTitle('ระบบคุณภาพห้องปฏิบัติการ')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function wiTemplate_(name, embed) {
+  const tpl = HtmlService.createTemplateFromFile(name);
+  tpl.embed = !!embed;
+  return tpl;
 }
 
 // ============================================================
@@ -1239,7 +1250,5 @@ function getDueForReview(daysAhead) {
 // 8. HTML PARTIALS
 // ============================================================
 
-/** ใช้ใน template: <?!= include('Styles') ?> — แชร์ CSS / signature pad ระหว่างหน้า */
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
+// include('Styles') / include('Nav') / include('SigPad') ใช้ include() ใน Shell.gs (ตัวเดียวกันทุกตัวอักษร
+// — Apps Script รวมทุกไฟล์ .gs เป็น scope เดียว ประกาศซ้ำแล้วตัวหลังจะทับตัวหน้า)

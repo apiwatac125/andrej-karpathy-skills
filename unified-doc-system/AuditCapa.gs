@@ -95,8 +95,11 @@ const CAPA_STATUS = {
   CANCELLED: 'ยกเลิก'
 };
 
-/** บทบาทในทะเบียน People — ใช้คุมสิทธิ์ได้ต่อเมื่อ deploy แบบ DOMAIN (ดู getCurrentUser) */
-const ROLES = [
+/**
+ * บทบาทในทะเบียน People — ใช้คุมสิทธิ์ได้ต่อเมื่อ deploy แบบ DOMAIN (ดู getCurrentUser)
+ * ชื่อเดิม ROLES — เปลี่ยนเพราะชนกับระดับสิทธิ์ของหน้าหลัก (Config.gs) ซึ่งเป็นคนละเรื่องกัน
+ */
+const PEOPLE_ROLES = [
   { value: 'staff', label: 'ผู้ปฏิบัติงาน / ผู้จัดทำเอกสาร' },
   { value: 'head', label: 'หัวหน้างาน (ผู้ทบทวน)' },
   { value: 'qm', label: 'ผู้จัดการคุณภาพ (QM)' },
@@ -224,7 +227,7 @@ function requireRole_(roleList) {
   const ok = roleList.some(function (r) { return me.roles.indexOf(r) > -1; });
   if (!ok) {
     throw new Error('บัญชี ' + me.email + ' ไม่มีสิทธิ์ทำรายการนี้ (ต้องเป็น ' +
-      roleList.map(function (r) { return labelOf_(ROLES, r); }).join(' หรือ ') + ')');
+      roleList.map(function (r) { return labelOf_(PEOPLE_ROLES, r); }).join(' หรือ ') + ')');
   }
   return me;
 }

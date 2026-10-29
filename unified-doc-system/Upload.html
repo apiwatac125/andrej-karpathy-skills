@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-page="upload" data-dar="<?= darId ?>">
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="upload" data-dar="<?= darId ?>">
 <div class="wrap">
   <?!= include('Nav') ?>
 
@@ -146,7 +146,7 @@
   <div id="doneCard" class="card" style="display:none">
     <h3>ส่งเอกสารเรียบร้อย</h3>
     <div id="doneBody"></div>
-    <button type="button" class="ghost" onclick="location.reload()" style="margin-top:12px">ส่งเอกสารฉบับถัดไป</button>
+    <button type="button" class="ghost" onclick="WiNav.go(BASE_URL + '?page=upload')" style="margin-top:12px">ส่งเอกสารฉบับถัดไป</button>
   </div>
 </div>
 

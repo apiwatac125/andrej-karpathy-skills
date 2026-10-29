@@ -6,10 +6,11 @@
  * SUMMARY_COLUMNS ของระบบนั้น — ระบบแยกโปรเจกต์กันจึงเรียกฟังก์ชันของกันและกันไม่ได้
  *   SPMT07_SHEET_ID  id สเปรดชีต "SP-MT-07 Selection Submissions" (บัญชีที่ deploy ต้องเปิดได้)
  *   SPMT07_APP_URL   URL เว็บแอป SP-MT-07 ใช้ทำลิงก์เปิดเอกสาร (ตัวเดียวกับเมนู)
- * คลัง WI, SP, SOP: ยังไม่ได้เชื่อม — ต้องมีโค้ดระบบ WI ก่อน
+ * คลัง WI, SP, SOP: เรียก searchArchive() ของ WI (DocSearch.gs) ตรง เพราะอยู่ในโปรเจกต์เดียวกัน
+ *   ค้นถึงเนื้อหาในไฟล์ที่ทำ index ตอนอนุมัติ และค้นเฉพาะฉบับ "อนุมัติแล้ว" ตามกติกาของ WI
  */
 
-var SEARCH_LIMIT = 8;
+var SEARCH_LIMIT = 5;   // ต่อคลัง — คะแนนของแต่ละคลังคนละสเกล จึงไม่เรียงรวมกัน
 
 // ชื่อประเภทการประเมิน ตาม SUMMARY_EVAL_TYPES ใน Code.gs ของ SP-MT-07
 var SPMT07_EVAL_TYPES = {
@@ -18,7 +19,8 @@ var SPMT07_EVAL_TYPES = {
   calibration: 'สอบเทียบเครื่องมือ'
 };
 
-var THAI_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+// ชื่อ THAI_MONTHS ใช้แล้วใน Code.gs ของ WI (ทุกไฟล์ .gs อยู่ใน scope เดียวกัน)
+var MONTHS_TH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
 /** ทุกคำ (คั่นด้วยช่องว่าง ยาว 2 ตัวขึ้นไป) ต้องเจอในเอกสาร — คืนผลที่ตรงที่สุดก่อน */
@@ -28,25 +30,53 @@ function searchDocs(token, query) {
   var terms = String(query || '').toLowerCase().split(/\s+/).filter(function (t) { return t.length >= 2; });
   if (!terms.length) return { query: query, tooShort: true };
 
+  var props = PropertiesService.getScriptProperties();
   var hits = [];
+  var total = 0;
   var sources = [];   // คลังที่ค้นแล้ว
   var missing = [];   // คลังที่มีสิทธิ์แต่ยังไม่ได้ตั้งค่า
+  var notes = [];     // คลังที่ค้นไม่สำเร็จ — ไม่ให้คลังหนึ่งพังแล้วผลของคลังอื่นหายไปด้วย
 
-  var spmt = findItem_('spmt-archive');
-  if (spmt && level >= itemLevel_(spmt)) {
-    if (PropertiesService.getScriptProperties().getProperty('SPMT07_SHEET_ID')) {
-      hits = hits.concat(searchSpmt07_(terms));
-      sources.push('คลังเอกสารระบบจัดซื้อ');
-    } else {
-      missing.push('คลังเอกสารระบบจัดซื้อ');
+  function add(itemId, name, ready, search) {
+    var item = findItem_(itemId);
+    if (!item || level < itemLevel_(item)) return;
+    if (!ready) {
+      missing.push(name);
+      return;
+    }
+    try {
+      var found = search();
+      found.sort(function (a, b) { return b.score - a.score || b.time - a.time; });
+      total += found.length;
+      hits = hits.concat(found.slice(0, SEARCH_LIMIT));
+      sources.push(name);
+    } catch (err) {
+      notes.push('ค้น' + name + 'ไม่สำเร็จ: ' + err.message);
     }
   }
 
-  hits.sort(function (a, b) { return b.score - a.score || b.time - a.time; });
+  add('wi-archive', 'คลังเอกสาร WI, SP, SOP', !!props.getProperty('SHEET_ID'), function () { return searchWi_(query); });
+  add('spmt-archive', 'คลังเอกสารระบบจัดซื้อ', !!props.getProperty('SPMT07_SHEET_ID'), function () { return searchSpmt07_(terms); });
+
   return {
-    query: query, terms: terms, total: hits.length, sources: sources, missing: missing,
-    hits: hits.slice(0, SEARCH_LIMIT)
+    query: query, terms: terms, total: total, sources: sources, missing: missing, notes: notes, hits: hits
   };
+}
+
+/** คลังเอกสารคุณภาพของ WI — แปลงผลของ searchArchive() เป็นรูปแบบเดียวกับคลังอื่น */
+function searchWi_(query) {
+  var res = searchArchive(query, { includeObsolete: false });
+  return (res.hits || []).map(function (h) {
+    var links = [];
+    if (h.fileUrl) links.push({ label: 'ไฟล์เอกสาร', url: h.fileUrl });
+    if (h.coverPdfUrl) links.push({ label: 'ใบปก PDF', url: h.coverPdfUrl });
+    return {
+      kind: h.docTypeLabel, title: h.docCode + ' ' + h.docTitle,
+      meta: ['ฉบับที่ ' + h.editionLabel, h.unit, h.effectiveDate ? 'ประกาศใช้ ' + h.effectiveDate : ''].filter(String).join(' · '),
+      detail: (h.snippets || [])[0] || (h.indexed ? '' : 'ยังไม่ได้ดึงข้อความจากไฟล์ — ค้นได้เฉพาะชื่อและเลขที่'),
+      companies: [], status: h.status, links: links, score: h.score, time: 0
+    };
+  });
 }
 
 function searchSpmt07_(terms) {
@@ -150,7 +180,7 @@ function unitDisplay_(unit) { return String(unit || '').replace(/^ห้อง/,
 
 function thaiDate_(v) {
   if (!(v instanceof Date)) return String(v || '');
-  return v.getDate() + ' ' + THAI_MONTHS[v.getMonth()] + ' ' + (v.getFullYear() + 543);
+  return v.getDate() + ' ' + MONTHS_TH[v.getMonth()] + ' ' + (v.getFullYear() + 543);
 }
 
 function timeOf_(v) { return v instanceof Date ? v.getTime() : 0; }

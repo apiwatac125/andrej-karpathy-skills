@@ -1,11 +1,28 @@
-# push ขึ้น Apps Script เฉพาะไฟล์ของระบบ
+# push ขึ้น Apps Script เฉพาะไฟล์ของระบบ (ไม่เอา README / CLAUDE.md / preview / wi/)
 **/**
+!appsscript.json
+# หน้าหลัก
 !Config.gs
 !Auth.gs
-!Code.gs
+!Shell.gs
 !Search.gs
 !Settings.gs
 !LocalProps.gs
 !Index.html
+!ShellStyles.html
+# ระบบ WI (เดิม wi-doc-control v2.2)
+!Code.gs
+!Common.gs
+!DocRequest.gs
+!DocSearch.gs
+!AuditCapa.gs
+!Home.html
+!Dar.html
+!Upload.html
+!Sign.html
+!Archive.html
+!Audit.html
+!Capa.html
+!Nav.html
 !Styles.html
-!appsscript.json
+!SigPad.html

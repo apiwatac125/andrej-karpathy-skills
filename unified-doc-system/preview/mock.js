@@ -100,6 +100,34 @@ var ScriptApp = {
 
 var Logger = { log: function (m) { console.log(m); } };
 
+// ---- แทนฟังก์ชันของระบบ WI (Code.gs / DocSearch.gs) ที่ไม่ได้รันในหน้าตัวอย่าง ----
+function runSetup() { __props.SHEET_ID = 'previewWiSheet'.padEnd(44, 'x'); }
+
+// เอกสารตัวอย่างที่แต่งขึ้นสำหรับหน้าตัวอย่าง — ไม่ใช่เอกสารจริงของกลุ่มงาน
+var __wiDocs = [
+  { docCode: 'WI-MB-08', docTitle: 'การรายงานค่าวิกฤต (ตัวอย่าง)', docTypeLabel: 'วิธีปฏิบัติงาน (WI)',
+    unit: 'งานจุลชีววิทยา', editionLabel: 'D/1', effectiveDate: '3 สิงหาคม 2569',
+    text: 'ตัวอย่างเนื้อหา: เมื่อพบค่าวิกฤตให้รายงานแพทย์หรือพยาบาลทางโทรศัพท์ภายใน 30 นาที และบันทึกชื่อผู้รับแจ้ง' },
+  { docCode: 'WI-MB-09', docTitle: 'การควบคุมคุณภาพภายใน (ตัวอย่าง)', docTypeLabel: 'วิธีปฏิบัติงาน (WI)',
+    unit: 'งานจุลชีววิทยา', editionLabel: 'D', effectiveDate: '1 มีนาคม 2568',
+    text: 'ตัวอย่างเนื้อหา: ตรวจ QC ทุกล็อตน้ำยาก่อนใช้งาน บ่มที่ 35±2 องศาเซลเซียส' },
+  { docCode: 'SP-MT-03', docTitle: 'การควบคุมเอกสาร (ตัวอย่าง)', docTypeLabel: 'ระเบียบปฏิบัติ (SP)',
+    unit: 'กลุ่มงานพยาธิวิทยาคลินิกฯ', editionLabel: '2', effectiveDate: '1 มกราคม 2567',
+    text: 'ตัวอย่างเนื้อหา: ทบทวนเอกสารทุก 2 ปี ฉบับที่ยกเลิกใช้ต้องเก็บไว้ตามระยะเก็บรักษา' }
+];
+function searchArchive(query) {
+  var terms = String(query || '').toLowerCase().split(/\s+/).filter(function (t) { return t.length >= 2; });
+  var hits = __wiDocs.filter(function (d) {
+    var hay = (d.docCode + ' ' + d.docTitle + ' ' + d.unit + ' ' + d.text).toLowerCase();
+    return terms.every(function (t) { return hay.indexOf(t) > -1; });
+  }).map(function (d) {
+    return { docCode: d.docCode, docTitle: d.docTitle, docTypeLabel: d.docTypeLabel, unit: d.unit,
+      editionLabel: d.editionLabel, status: 'อนุมัติแล้ว', effectiveDate: d.effectiveDate,
+      fileUrl: '', coverPdfUrl: '', indexed: true, score: 1, snippets: [d.text] };
+  });
+  return { query: query, terms: terms, hits: hits, total: hits.length };
+}
+
 /** สร้างผู้ใช้ตัวอย่างระดับละหนึ่งคน แล้วต่อ google.script.run เข้ากับฟังก์ชันฝั่ง server */
 function __start(api, app) {
   setup();

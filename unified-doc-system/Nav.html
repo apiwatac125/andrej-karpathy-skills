@@ -20,6 +20,39 @@
       if (p === here) links[i].className = 'active';
     }
   })();
+
+  /**
+   * เปลี่ยนหน้าภายในระบบ WI
+   * - เปิดตรง: ไปที่หน้าต่างบนสุด (location.href ในกรอบ HtmlService จะโหลดหน้าซ้อนในกรอบ sandbox)
+   * - เปิดในกรอบของระบบงานเอกสาร (<body data-embed="1">): ส่งให้หน้าหลักเปิดในกรอบเดิม
+   *   เพราะลิงก์ target="_top" จะพาออกจากหน้าหลัก — หน้าหลักตรวจสิทธิ์และแนบ session ให้เอง
+   *   ส่งให้ทุกชั้นขึ้นไปเพราะไม่รู้ว่า Apps Script ห่อกรอบไว้กี่ชั้น หน้าหลักรับเฉพาะข้อความจากกรอบของตัวเอง
+   */
+  var WiNav = (function () {
+    var base = document.body.getAttribute('data-base') || '';
+    var embed = document.body.getAttribute('data-embed') === '1';
+
+    function go(url) {
+      if (!embed) {
+        window.top.location.href = url;
+        return;
+      }
+      for (var w = window.parent; ; w = w.parent) {
+        w.postMessage({ type: 'wi-open', url: url }, '*');
+        if (w === window.top) break;
+      }
+    }
+
+    if (embed) {
+      document.addEventListener('click', function (e) {
+        var a = e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a || a.getAttribute('target') === '_blank' || !base || a.href.indexOf(base) !== 0) return;
+        e.preventDefault();
+        go(a.href);
+      }, true);
+    }
+    return { go: go };
+  })();
 </script>
 
 <!-- ============================================================
@@ -85,6 +118,8 @@
     #ds-launch { right: 12px; bottom: 12px; }
   }
   @media print { #ds-launch, #ds-panel { display: none !important; } }
+  /* ในกรอบของระบบงานเอกสาร ใช้เมนูซ้ายและแชทบอทของหน้าหลักแทน */
+  body[data-embed="1"] #appnav, body[data-embed="1"] #ds-launch, body[data-embed="1"] #ds-panel { display: none !important; }
 </style>
 
 <button id="ds-launch" class="no-print" type="button" aria-expanded="false" aria-controls="ds-panel">

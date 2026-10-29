@@ -3,7 +3,8 @@
 
 ใช้:  python3 preview/build.py <ไฟล์ปลายทาง.html>
 
-ไฟล์ .gs ทั้งหมดรันในเบราว์เซอร์บนบริการ Apps Script จำลอง (preview/mock.js)
+ไฟล์ .gs ของหน้าหลักรันในเบราว์เซอร์บนบริการ Apps Script จำลอง (preview/mock.js)
+ระบบ WI (Code.gs ฯลฯ) ไม่ได้รันในหน้าตัวอย่าง — mock.js จำลองแค่ runSetup / searchArchive ของมัน
 ห่อไว้ในฟังก์ชันเดียวกันเพื่อไม่ให้ชื่อฟังก์ชันชนกับสคริปต์ฝั่งหน้าเว็บ
 """
 import re
@@ -17,15 +18,16 @@ def read(name):
     return (ROOT / name).read_text(encoding='utf-8')
 
 
-server = '\n'.join(read(n) for n in ('Config.gs', 'Auth.gs', 'Code.gs', 'Search.gs', 'Settings.gs'))
+server = '\n'.join(read(n) for n in ('Config.gs', 'Auth.gs', 'Shell.gs', 'Search.gs', 'Settings.gs'))
 # google.script.run เรียกได้เฉพาะฟังก์ชันที่ชื่อไม่ลงท้ายด้วย _ — จำลองตามนั้น
+assert '</script' not in server, 'โค้ด .gs มีคำว่า </script ซึ่งจะปิดแท็ก script ของหน้าตัวอย่าง'
 public = [n for n in re.findall(r'^function (\w+)\s*\(', server, re.M) if not n.endswith('_')]
 
 index = read('Index.html')
 head = index.split('<head>', 1)[1].split('</head>', 1)[0]
 body = index.split('<body>', 1)[1].rsplit('</body>', 1)[0]
-head = head.replace('<base target="_top">', '').replace("<?!= include('Styles'); ?>", read('Styles.html'))
-body = body.replace('<?!= JSON.stringify(app) ?>', 'window.__APP')
+head = head.replace('<base target="_top">', '').replace("<?!= include('ShellStyles'); ?>", read('ShellStyles.html'))
+body = body.replace('<?!= appJson ?>', 'window.__APP').replace('<?!= nextJson ?>', 'null')
 assert '<?' not in head + body, 'มี scriptlet ที่ build.py ยังไม่รู้จัก'
 
 exports = ', '.join(f'{n}: {n}' for n in public)
