@@ -43,19 +43,27 @@ if errorlevel 1 (
   python his_ward_sync.py >> "%LOG%" 2>&1
 )
 
-REM ========== [4] Antibiogram cumulative + rolling (CSV) ==========
+REM ========== [4] Antibiogram cumulative + rolling (CSV + Google Sheet) ==========
 REM ไม่มี GUI -> ไม่ชนกับ step 1-3. อ่านไฟล์ DBF ที่ step[1] สะสมไว้ แล้วเขียนตารางสรุป (ไม่มี PHI).
 REM ABPY = ที่อยู่ daily_etl.py (ปรับถ้า clone repo ไว้ที่อื่น)
 set ABPY=D:\antibiogram\daily_etl.py
 set ABOUT=D:\HIS_export\antibiogram_summary.csv
-REM ดึงโฟลเดอร์ DBF จาก config.py เดิม (ตัวแปร DBF_FOLDER) อัตโนมัติ -> ไม่ต้องกรอก path
+REM ดึง DBF_FOLDER / GAS_URL / API_SECRET จาก config.py เดิมอัตโนมัติ -> ไม่ต้องกรอก path/secret
 set ABDIR=
+set ABGAS=
+set ABSEC=
 for /f "usebackq delims=" %%i in (`python -c "import config as cfg; print(cfg.DBF_FOLDER)"`) do set ABDIR=%%i
+for /f "usebackq delims=" %%i in (`python -c "import config as cfg; print(getattr(cfg,'GAS_URL',''))"`) do set ABGAS=%%i
+for /f "usebackq delims=" %%i in (`python -c "import config as cfg; print(getattr(cfg,'API_SECRET',''))"`) do set ABSEC=%%i
 if "%ABDIR%"=="" (
   echo [%date% %time%] [4] WARN: อ่าน DBF_FOLDER จาก config.py ไม่ได้ - ข้าม antibiogram>> "%LOG%"
 ) else (
   echo [%date% %time%] [4] antibiogram ETL (DBF=%ABDIR%)...>> "%LOG%"
-  python "%ABPY%" --dbf-dir "%ABDIR%" --out "%ABOUT%" >> "%LOG%" 2>&1
+  if "%ABGAS%"=="" (
+    python "%ABPY%" --dbf-dir "%ABDIR%" --out "%ABOUT%" >> "%LOG%" 2>&1
+  ) else (
+    python "%ABPY%" --dbf-dir "%ABDIR%" --out "%ABOUT%" --gas-url "%ABGAS%" --gas-secret "%ABSEC%" >> "%LOG%" 2>&1
+  )
 )
 
 echo [%date% %time%] ========== MASTER DONE ==========>> "%LOG%"

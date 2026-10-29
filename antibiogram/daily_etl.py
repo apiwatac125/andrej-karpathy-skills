@@ -132,8 +132,29 @@ def push_to_sheet(df: pd.DataFrame, sheet_id: str, creds_path: str, worksheet: s
     ws.update([df.columns.tolist()] + df.astype(object).where(df.notna(), "").values.tolist())
 
 
+def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
+                action: str = "antibiogram", chunk: int = 4000) -> int:
+    """เขียนตารางสรุปขึ้น Google Sheet ผ่าน GAS Web App เดิม (ใช้ secret เดียวกับ daily report).
+
+    ส่งเป็นก้อน: ก้อนแรก mode=overwrite (GAS เคลียร์ tab ก่อนเขียน) ก้อนถัดไป mode=append.
+    ฝั่ง GAS รับ action='antibiogram' (ดู deploy/gas_antibiogram.gs).
+    """
+    import json
+    import requests
+    header = list(df.columns)
+    rows = df.astype(object).where(df.notna(), "").values.tolist()
+    for i in range(0, len(rows) or 1, chunk):
+        payload = {"secret": secret, "action": action, "header": header,
+                   "rows": rows[i:i + chunk],
+                   "mode": "overwrite" if i == 0 else "append"}
+        r = requests.post(gas_url, data=json.dumps(payload), timeout=180)
+        r.raise_for_status()
+    return len(rows)
+
+
 def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
-        rolling_months=12, drop_sources=None, sheet_id=None, creds=None):
+        rolling_months=12, drop_sources=None, sheet_id=None, creds=None,
+        gas_url=None, gas_secret=None):
     t0 = time.time()
     raw, files = read_all_dbf(dbf_dir, encoding=encoding)
     if raw.empty:
@@ -167,10 +188,16 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
     periods = summary["period"].nunique()
     print(f"สรุป {len(summary):,} แถว · {periods} ช่วง · {summary['stratum'].nunique()} กลุ่ม -> {out}")
 
-    if sheet_id and creds:
+    if gas_url and gas_secret:
+        try:
+            n = push_to_gas(summary, gas_url, gas_secret)
+            print(f"ส่งขึ้น Google Sheet ผ่าน GAS (tab 'Antibiogram') {n:,} แถว")
+        except Exception as e:
+            print(f"ส่ง GAS ไม่สำเร็จ: {e}", file=sys.stderr)
+    elif sheet_id and creds:
         try:
             push_to_sheet(summary, sheet_id, creds)
-            print(f"อัปโหลดขึ้น Google Sheet tab 'Antibiogram' แล้ว")
+            print(f"อัปโหลดขึ้น Google Sheet tab 'Antibiogram' แล้ว (gspread)")
         except Exception as e:
             print(f"อัปโหลด Sheet ไม่สำเร็จ: {e}", file=sys.stderr)
     print(f"เสร็จใน {time.time()-t0:.1f}s")
@@ -185,7 +212,9 @@ def main():
     ap.add_argument("--encoding", default="cp874")
     ap.add_argument("--rolling-months", type=int, default=12)
     ap.add_argument("--drop-sources", default="", help="CSOURCE_A ที่เป็น screening (คั่นด้วย ,)")
-    ap.add_argument("--sheet-id", help="Google Sheet id ปลายทาง (ไม่บังคับ)")
+    ap.add_argument("--gas-url", help="GAS Web App URL เดิม (ส่งขึ้น Sheet ด้วย action=antibiogram)")
+    ap.add_argument("--gas-secret", help="API secret เดียวกับ daily report")
+    ap.add_argument("--sheet-id", help="Google Sheet id ปลายทาง (ทางเลือก gspread)")
     ap.add_argument("--creds", help="service-account json สำหรับ gspread (ไม่บังคับ)")
     args = ap.parse_args()
 
@@ -194,7 +223,8 @@ def main():
     run(args.dbf_dir, profile, conditions, args.out, his_dir=args.his_dir,
         encoding=args.encoding, rolling_months=args.rolling_months,
         drop_sources=[s for s in args.drop_sources.split(",") if s.strip()],
-        sheet_id=args.sheet_id, creds=args.creds)
+        sheet_id=args.sheet_id, creds=args.creds,
+        gas_url=args.gas_url, gas_secret=args.gas_secret)
 
 
 if __name__ == "__main__":

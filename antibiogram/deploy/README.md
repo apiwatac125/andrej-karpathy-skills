@@ -45,4 +45,33 @@ python D:\antibiogram\daily_etl.py --dbf-dir "%ABDIR%" --out D:\HIS_export\antib
 `period, period_start, period_end, stratum_type, stratum, organism, drug, n_tested, n_s, pct_s, lt30, intrinsic`
 — **ไม่มี HN/ชื่อ** (มี assert กันพลาด). `period` = ทุกปี + `rolling12m`; `stratum` = All / กลุ่มสิ่งส่งตรวจ.
 
-ดูภาพรวม/ข้อควรระวัง (CAI/HAI, ขึ้น Google Sheet) ที่ [`../docs/DAILY_AUTOMATION.md`](../docs/DAILY_AUTOMATION.md).
+## 6. ขึ้น Google Sheet อัตโนมัติ (ผ่าน GAS เดิม)
+
+step [4] ในไฟล์ `master_daily.bat` นี้ดึง `GAS_URL` + `API_SECRET` จาก `config.py` อัตโนมัติ
+แล้วส่งตารางสรุปขึ้นชีตทุกวัน — เหลือติดตั้งฝั่ง GAS ครั้งเดียว:
+
+1. เปิด Apps Script ของ Sheet (Extensions → Apps Script)
+2. วางโค้ดใน [`gas_antibiogram.gs`](gas_antibiogram.gs) ท้าย `Code.gs`
+3. ใน `doPost(e)` เพิ่ม 1 บรรทัด: `if (data.action === 'antibiogram') return abWrite_(data);`
+4. แก้ `_ab_secret_()` ให้คืน `API_SECRET` ที่โปรเจกต์ใช้ (หรือใส่ไว้ใน Script Properties)
+5. Deploy → New version (URL เดิมไม่เปลี่ยน)
+
+ได้ tab ใหม่ชื่อ **`Antibiogram`** อัปเดตทับทุกวัน (ไม่มี PHI).
+
+> ไม่อยากแก้ GAS? ใช้ gspread แทนได้: `--sheet-id <id> --creds service_account.json`
+> (แชร์ Sheet ให้ service account) — แต่ต้องสร้าง credential ใหม่.
+
+## 7. Dashboard อ่านชีตเองอัตโนมัติ
+
+เปิด [`antibiogram_dashboard.html`](antibiogram_dashboard.html) — หน้าเดียวจบ อ่าน tab `Antibiogram`
+สดผ่าน gviz (ไม่ต้องมี backend). ตั้ง Sheet ID วิธีใดก็ได้:
+
+- เปิดด้วย query param: `antibiogram_dashboard.html?sheet=<SHEET_ID>` (และ `&tab=Antibiogram`)
+- หรือแก้ `__SHEET_ID__` ในไฟล์ให้เป็น ID จริง
+- หรือเปิดเปล่า ๆ แล้ววาง Sheet ID ในช่องบนหน้า
+
+เงื่อนไข: Sheet ต้องแชร์ **"ผู้ที่มีลิงก์ → ผู้มีสิทธิ์ดู"** (เหมือน lookup ที่ daily report อ่านอยู่แล้ว).
+วางหน้า HTML นี้ไว้ที่ไหนก็ได้ (Cloudflare Pages ข้าง ๆ เว็บแอปเดิม, IIS, หรือเปิดไฟล์ตรง ๆ) —
+หน้าเว็บจะดึงข้อมูลล่าสุดทุกครั้งที่โหลด จึง **อัปเดตเองตามชีตที่ ETL เขียนรายวัน**.
+
+ดูภาพรวม/ข้อควรระวัง (CAI/HAI, backfill) ที่ [`../docs/DAILY_AUTOMATION.md`](../docs/DAILY_AUTOMATION.md).
