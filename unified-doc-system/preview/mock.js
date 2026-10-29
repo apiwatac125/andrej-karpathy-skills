@@ -8,7 +8,8 @@ var PropertiesService = {
   getScriptProperties: function () {
     return {
       getProperty: function (k) { return __props.hasOwnProperty(k) ? __props[k] : null; },
-      setProperty: function (k, v) { __props[k] = String(v); }
+      setProperty: function (k, v) { __props[k] = String(v); },
+      deleteProperty: function (k) { delete __props[k]; }
     };
   }
 };
@@ -61,7 +62,8 @@ __Book.prototype.insertSheet = function (n) { return (this.sheets[n] = new __She
 
 var SpreadsheetApp = {
   create: function () {
-    var id = 'preview-' + Object.keys(__books).length;
+    // ยาวเท่า id จริงของ Google Sheets (44 ตัว) เพราะหน้าตั้งค่าตรวจรูปแบบ id
+    var id = ('previewSpreadsheet' + Object.keys(__books).length + '_').padEnd(44, 'x');
     return (__books[id] = new __Book(id));
   },
   openById: function (id) { return __books[id]; }
@@ -102,7 +104,8 @@ var Logger = { log: function (m) { console.log(m); } };
 function __start(api, app) {
   setup();
   var demo = [
-    { username: 'admin', name: 'ตัวอย่าง หัวหน้ากลุ่มงาน', unit: 'กลุ่มงานพยาธิวิทยาคลินิกฯ', role: 'group_head' },
+    { username: 'admin', name: 'ตัวอย่าง ผู้ดูแลระบบ', unit: 'กลุ่มงานพยาธิวิทยาคลินิกฯ', role: 'admin' },
+    { username: 'head.group', name: 'ตัวอย่าง หัวหน้ากลุ่มงาน', unit: 'กลุ่มงานพยาธิวิทยาคลินิกฯ', role: 'group_head' },
     { username: 'head.micro', name: 'ตัวอย่าง หัวหน้างาน', unit: 'งานจุลชีววิทยาคลินิก', role: 'unit_head' },
     { username: 'staff.micro', name: 'ตัวอย่าง ผู้ปฏิบัติงาน', unit: 'งานจุลชีววิทยาคลินิก', role: 'staff' },
     { username: 'guest', name: 'ตัวอย่าง ผู้ใช้อื่นๆ', unit: 'หน่วยงานภายนอก', role: 'other' }

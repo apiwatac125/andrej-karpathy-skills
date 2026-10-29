@@ -7,10 +7,11 @@ function doGet(e) {
   var p = (e && e.parameter) || {};
   if (p.page) return renderPage_(p.page, p.s);
 
+  var app = appInfo_();
   var t = HtmlService.createTemplateFromFile('Index');
-  t.app = APP;
+  t.app = app;
   return t.evaluate()
-    .setTitle(APP.title)
+    .setTitle(app.title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -22,13 +23,14 @@ function include(name) {
 function getShell(token) {
   var u = session_(token);
   var level = roleOf_(u.role).level;
+  var levels = menuLevels_();
   var menu = [];
   MENU.forEach(function (g) {
     if (g.slot) {
       menu.push({ slot: true });
       return;
     }
-    var items = g.items.filter(function (it) { return level >= it.minLevel; }).map(function (it) {
+    var items = g.items.filter(function (it) { return level >= itemLevel_(it, levels); }).map(function (it) {
       return { id: it.id, label: it.label, ready: !!(it.app || it.file) };
     });
     if (items.length) menu.push({ group: g.group, items: items });
@@ -40,7 +42,7 @@ function getShell(token) {
     shell.roles = ROLES;
     shell.adminLevel = ADMIN_LEVEL;
     shell.access = allItems_().map(function (x) {
-      return { group: x.group, label: x.item.label, minLevel: x.item.minLevel };
+      return { group: x.group, label: x.item.label, minLevel: itemLevel_(x.item, levels) };
     });
   }
   return shell;
@@ -50,7 +52,7 @@ function getShell(token) {
 function openItem(token, id) {
   var item = findItem_(id);
   if (!item) throw new Error('ไม่พบเมนูนี้');
-  requireLevel_(token, item.minLevel);
+  requireLevel_(token, itemLevel_(item));
 
   if (item.file) {
     return { url: ScriptApp.getService().getUrl() + '?page=' + encodeURIComponent(id) + '&s=' + encodeURIComponent(token) };
@@ -69,7 +71,7 @@ function renderPage_(id, token) {
   var user;
   try {
     if (!item || !item.file) throw new Error('ไม่พบหน้านี้');
-    user = requireLevel_(token, item.minLevel);
+    user = requireLevel_(token, itemLevel_(item));
   } catch (err) {
     return HtmlService.createHtmlOutput('<p style="font-family:sans-serif">' + err.message + '</p>');
   }

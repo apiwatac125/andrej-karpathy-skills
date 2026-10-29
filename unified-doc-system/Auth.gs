@@ -12,7 +12,8 @@ var SESSION_SECONDS = 6 * 60 * 60;
 var SESSION_EXPIRED = 'หมดเวลาใช้งาน กรุณาเข้าสู่ระบบใหม่';
 
 /**
- * รันครั้งเดียวจาก Apps Script editor: สร้างสเปรดชีตผู้ใช้ + บัญชี admin (หัวหน้ากลุ่มงาน)
+ * รันครั้งเดียวจาก Apps Script editor: สร้างสเปรดชีตผู้ใช้ + บัญชี admin (ผู้ดูแลระบบ)
+ * รันซ้ำได้ — ถ้ายังไม่มีผู้ดูแลระบบที่ใช้งานอยู่ จะปรับบัญชี admin เดิมเป็นผู้ดูแลระบบให้
  * ถ้าจะใช้สเปรดชีตที่มีอยู่แล้ว ให้ตั้ง Script Property DB_SHEET_ID ก่อนรัน
  * รหัสผ่านชั่วคราวของ admin ดูได้ที่ Execution log
  */
@@ -37,9 +38,13 @@ function setup() {
     sh.appendRow(USER_HEADERS);
     sh.setFrozenRows(1);
   }
-  if (sh.getLastRow() === 1) {
+  var hasAdmin = readUsers_().some(function (u) { return isActive_(u) && roleOf_(u.role).level >= ADMIN_LEVEL; });
+  if (!hasAdmin && findUser_('admin')) {
+    saveUser_({ username: 'admin', role: 'admin', active: true });
+    Logger.log('ปรับบัญชี admin เป็นระดับผู้ดูแลระบบแล้ว (รหัสผ่านเดิม)');
+  } else if (!hasAdmin) {
     var password = Utilities.getUuid().slice(0, 8);
-    saveUser_({ username: 'admin', name: 'ผู้ดูแลระบบ', role: 'group_head', active: true, password: password });
+    saveUser_({ username: 'admin', name: 'ผู้ดูแลระบบ', role: 'admin', active: true, password: password });
     Logger.log('สร้างบัญชี admin แล้ว รหัสผ่านชั่วคราว: ' + password + ' — เข้าระบบแล้วเปลี่ยนรหัสผ่านทันที');
   }
   Logger.log('สเปรดชีตผู้ใช้: ' + ss.getUrl());

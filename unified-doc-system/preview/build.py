@@ -17,7 +17,7 @@ def read(name):
     return (ROOT / name).read_text(encoding='utf-8')
 
 
-server = '\n'.join(read(n) for n in ('Config.gs', 'Auth.gs', 'Code.gs', 'Search.gs'))
+server = '\n'.join(read(n) for n in ('Config.gs', 'Auth.gs', 'Code.gs', 'Search.gs', 'Settings.gs'))
 # google.script.run เรียกได้เฉพาะฟังก์ชันที่ชื่อไม่ลงท้ายด้วย _ — จำลองตามนั้น
 public = [n for n in re.findall(r'^function (\w+)\s*\(', server, re.M) if not n.endswith('_')]
 

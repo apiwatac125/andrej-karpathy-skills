@@ -33,7 +33,7 @@ function searchDocs(token, query) {
   var missing = [];   // คลังที่มีสิทธิ์แต่ยังไม่ได้ตั้งค่า
 
   var spmt = findItem_('spmt-archive');
-  if (spmt && level >= spmt.minLevel) {
+  if (spmt && level >= itemLevel_(spmt)) {
     if (PropertiesService.getScriptProperties().getProperty('SPMT07_SHEET_ID')) {
       hits = hits.concat(searchSpmt07_(terms));
       sources.push('คลังเอกสารระบบจัดซื้อ');

@@ -26,7 +26,7 @@
       </div>
       <button type="submit" class="primary" id="lg-btn">เข้าสู่ระบบ</button>
       <div class="msg" id="lg-msg"></div>
-      <p class="mini">ยังไม่มีบัญชีหรือลืมรหัสผ่าน ติดต่อหัวหน้ากลุ่มงาน</p>
+      <p class="mini">ยังไม่มีบัญชีหรือลืมรหัสผ่าน ติดต่อผู้ดูแลระบบ</p>
     </form>
   </div>
 
@@ -45,6 +45,7 @@
         <div class="user-links">
           <button type="button" class="link" data-view="password">เปลี่ยนรหัสผ่าน</button>
           <button type="button" class="link" data-view="users" id="lnk-users" hidden>จัดการผู้ใช้และสิทธิ์</button>
+          <button type="button" class="link" data-view="settings" id="lnk-settings" hidden>ตั้งค่าระบบ</button>
           <button type="button" class="link" id="btn-logout">ออกจากระบบ</button>
         </div>
       </div>
@@ -138,12 +139,9 @@
     document.querySelectorAll('.js-title').forEach(function (el) { el.textContent = APP.title; });
     document.querySelectorAll('.js-org').forEach(function (el) { el.textContent = APP.org; });
     document.querySelectorAll('.js-logo').forEach(function (el) {
-      if (APP.logoUrl) {
-        el.innerHTML = '<img src="' + esc(APP.logoUrl) + '" alt="โลโก้">';
-      } else {
-        el.textContent = 'โลโก้';
-        el.classList.add('empty');
-      }
+      if (APP.logoUrl) el.innerHTML = '<img src="' + esc(APP.logoUrl) + '" alt="โลโก้">';
+      else el.textContent = 'โลโก้';
+      el.classList.toggle('empty', !APP.logoUrl);
     });
   }
 
@@ -196,6 +194,7 @@
       $('u-role').textContent = data.user.roleLabel;
       $('u-unit').textContent = data.user.unit || '';
       $('lnk-users').hidden = !data.isAdmin;
+      $('lnk-settings').hidden = !data.isAdmin;
       drawMenu();
       setMenu(!narrow.matches);
       openBuiltin('welcome');
@@ -289,6 +288,9 @@
     if (name === 'users') {
       showView(viewUsers());
       loadUsers();
+    } else if (name === 'settings') {
+      showView(viewSettings());
+      loadSettings();
     } else if (name === 'password') {
       showView(viewPassword());
       bindPassword();
@@ -410,14 +412,14 @@
       '<div class="msg" id="u-done"></div>' +
       '<div id="u-list" class="msg wait">กำลังโหลด...</div></div>' +
       '<div class="card"><h3>ระดับสิทธิ์กับเมนูที่เปิดได้</h3>' + accessTable() +
-      '<div class="mini">แก้ระดับต่ำสุดของแต่ละเมนูได้ที่ minLevel ในไฟล์ Config.gs</div></div>';
+      '<div class="mini">แก้ระดับต่ำสุดของแต่ละเมนูได้ที่หน้า "ตั้งค่าระบบ"</div></div>';
   }
 
   function accessTable() {
     var html = '<div class="scroll-x"><table class="list"><tr><th>เมนู</th>';
     shell.roles.forEach(function (r) { html += '<th class="c">' + esc(r.label) + '</th>'; });
     html += '</tr>';
-    var rows = shell.access.concat([{ group: 'ระบบหลัก', label: 'จัดการผู้ใช้และสิทธิ์', minLevel: shell.adminLevel }]);
+    var rows = shell.access.concat([{ group: 'ระบบหลัก', label: 'จัดการผู้ใช้และตั้งค่าระบบ', minLevel: shell.adminLevel }]);
     rows.forEach(function (a) {
       html += '<tr><td>' + esc(a.label) + '<div class="mini">' + esc(a.group) + '</div></td>';
       shell.roles.forEach(function (r) {
@@ -509,6 +511,85 @@
     }, function (err) {
       $('f-save').disabled = false;
       setMsg('f-msg', err.message, 'err');
+    });
+  }
+
+  // ============================================================
+  // ตั้งค่าระบบ (ผู้ดูแลระบบ) — Settings.gs
+  // ============================================================
+  function viewSettings() {
+    return '<h1>ตั้งค่าระบบ</h1>' +
+      '<div class="sub">เฉพาะผู้ดูแลระบบ — บันทึกแล้วมีผลกับผู้ใช้ทุกคนทันที</div>' +
+      '<form id="set-form"><div id="set-body" class="msg wait">กำลังโหลด...</div></form>';
+  }
+
+  function loadSettings() {
+    call('adminGetSettings', [token], drawSettings, function (err) {
+      setMsg('set-body', err.message, 'err');
+    });
+  }
+
+  function drawSettings(s) {
+    var body = $('set-body');
+    if (!body) return;   // ผู้ใช้ออกจากหน้านี้ไปแล้ว
+    var html = '<div class="card"><h3>ข้อมูลหน้าระบบ</h3>' +
+      field('set-title', 'ชื่อระบบ', 'text', s.app.title) +
+      field('set-org', 'หน่วยงาน', 'text', s.app.org) +
+      field('set-logo', 'URL รูปโลโก้ (เว้นว่าง = ไม่มีโลโก้)', 'text', s.app.logoUrl, 'placeholder="https://..."') +
+      '</div><div class="card"><h3>การเชื่อมต่อระบบ</h3>';
+    s.links.forEach(function (l) {
+      html += field('link-' + l.key, l.label + ' (' + l.hint + ')', 'text', l.value, 'autocapitalize="none"');
+    });
+    html += '</div><div class="card"><h3>ระดับสิทธิ์ต่ำสุดของแต่ละเมนู</h3>' +
+      '<div class="mini">ผู้ใช้ระดับนี้ขึ้นไปจึงเห็นและเปิดเมนูได้</div>' +
+      '<div class="scroll-x"><table class="list"><tr><th>เมนู</th><th>ระดับต่ำสุด</th></tr>';
+    s.items.forEach(function (it) {
+      html += '<tr><td>' + esc(it.label) + '<div class="mini">' + esc(it.group) + '</div></td><td>' +
+        '<select id="lv-' + esc(it.id) + '" aria-label="ระดับต่ำสุดของ ' + esc(it.label) + '">' +
+        s.roles.map(function (r) {
+          return '<option value="' + r.level + '"' + (r.level === it.level ? ' selected' : '') + '>' + esc(r.label) +
+            (r.level === it.defaultLevel ? ' (ค่าเริ่มต้น)' : '') + '</option>';
+        }).join('') + '</select></td></tr>';
+    });
+    html += '</table></div></div>' +
+      '<div class="actions"><button type="submit" class="primary" id="set-save">บันทึกการตั้งค่า</button></div>' +
+      '<div class="msg" id="set-msg"></div>';
+    body.className = '';
+    body.innerHTML = html;
+    $('set-form').onsubmit = function (e) {
+      e.preventDefault();
+      saveSettings(s);
+    };
+  }
+
+  function saveSettings(s) {
+    var data = {
+      app: { title: $('set-title').value, org: $('set-org').value, logoUrl: $('set-logo').value },
+      links: {},
+      levels: {}
+    };
+    s.links.forEach(function (l) { data.links[l.key] = $('link-' + l.key).value; });
+    s.items.forEach(function (it) { data.levels[it.id] = Number($('lv-' + it.id).value); });
+    $('set-save').disabled = true;
+    setMsg('set-msg', 'กำลังบันทึก...', 'wait');
+    call('adminSaveSettings', [token, data], function (res) {
+      $('set-save').disabled = false;
+      setMsg('set-msg', 'บันทึกการตั้งค่าแล้ว', 'ok');
+      APP = res.app;
+      drawBrand();
+      refreshShell();
+    }, function (err) {
+      $('set-save').disabled = false;
+      setMsg('set-msg', err.message, 'err');
+    });
+  }
+
+  /** โหลดเมนูใหม่หลังแก้ระดับสิทธิ์ โดยไม่เปลี่ยนหน้าที่เปิดอยู่ */
+  function refreshShell() {
+    call('getShell', [token], function (data) {
+      shell = data;
+      drawMenu();
+      markActive(current);
     });
   }
 

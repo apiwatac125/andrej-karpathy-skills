@@ -13,14 +13,22 @@ var APP = {
  * เพิ่มระดับใหม่ได้โดยเพิ่มแถวและกำหนด level ตามลำดับที่ต้องการ
  */
 var ROLES = [
+  { key: 'admin', label: 'ผู้ดูแลระบบ (admin)', level: 5 },
   { key: 'group_head', label: 'หัวหน้ากลุ่มงาน', level: 4 },
   { key: 'unit_head', label: 'หัวหน้างาน', level: 3 },
   { key: 'staff', label: 'ผู้ปฏิบัติงาน', level: 2 },
   { key: 'other', label: 'อื่นๆ', level: 1 }
 ];
 
-/** ระดับต่ำสุดที่จัดการผู้ใช้และกำหนดสิทธิ์ได้ */
-var ADMIN_LEVEL = 4;
+/** ระดับต่ำสุดที่จัดการผู้ใช้และตั้งค่าระบบได้ — เปลี่ยนเป็น 4 ถ้าให้หัวหน้ากลุ่มงานทำได้ด้วย */
+var ADMIN_LEVEL = 5;
+
+/** ลิงก์เชื่อมระบบอื่น (เก็บเป็น Script Property ชื่อตาม key) ที่ผู้ดูแลระบบแก้ได้ในหน้า "ตั้งค่าระบบ" */
+var SETTING_LINKS = [
+  { key: 'WI_APP_URL', label: 'URL เว็บแอประบบ WI', hint: 'ลงท้ายด้วย /exec' },
+  { key: 'SPMT07_APP_URL', label: 'URL เว็บแอประบบจัดซื้อ (SP-MT-07)', hint: 'ลงท้ายด้วย /exec' },
+  { key: 'SPMT07_SHEET_ID', label: 'id สเปรดชีต SP-MT-07 Selection Submissions', hint: 'ใช้กับแชทบอทค้นคลัง' }
+];
 
 /**
  * เมนูแถบซ้าย เรียงตามแบบร่าง
