@@ -92,8 +92,9 @@ Google Apps Script web app หน้าหลักของกลุ่มง�
   จึงตรวจหน้าจริงเองไม่ได้
 - สถานะ 2026-10-29: deploy @2 ("เพิ่มระดับผู้ดูแลระบบ (admin) + หน้าตั้งค่าระบบ") — ผู้ใช้ต้องรัน `setup()`
   ใน editor หนึ่งครั้งเพื่อ authorize + สร้างบัญชี admin (รันซ้ำได้ ปรับ admin เดิมเป็นผู้ดูแลระบบ)
-- การรวม WI **ยังไม่ได้ deploy** — ตอน deploy: WI ใช้ DriveApp / MailApp / Drive API (advanced service) = scope ใหม่
-  ต้องรัน `setup()` ใน editor อีกครั้งเพื่อกด Allow ก่อน ไม่งั้นหน้า WI พังตอน runtime
+- 2026-10-29: deploy @3 ("รวมระบบ WI Document Control (login เดียว) + แชทบอทค้นคลัง WI") — ก่อน push
+  `clasp clone` แล้วตรงกับ commit 0d6e724 (ที่ deploy @2) · WI ใช้ DriveApp / MailApp / Drive API (advanced
+  service) = scope ใหม่ ผู้ใช้ต้องรัน `setup()` ใน editor อีกครั้งเพื่อกด Allow ไม่งั้นหน้า WI พังตอน runtime
 
 ## รูปแบบการทำงาน
 
