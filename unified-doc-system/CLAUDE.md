@@ -95,6 +95,7 @@ Google Apps Script web app หน้าหลักของกลุ่มง�
 - 2026-10-29: deploy @3 ("รวมระบบ WI Document Control (login เดียว) + แชทบอทค้นคลัง WI") — ก่อน push
   `clasp clone` แล้วตรงกับ commit 0d6e724 (ที่ deploy @2) · WI ใช้ DriveApp / MailApp / Drive API (advanced
   service) = scope ใหม่ ผู้ใช้ต้องรัน `setup()` ใน editor อีกครั้งเพื่อกด Allow ไม่งั้นหน้า WI พังตอน runtime
+  → ผู้ใช้รัน `setup()` แล้ว เปิดหน้า WI บนระบบจริงได้ (2026-10-29) · ยังไม่ได้ทดสอบอัปโหลด/ลงนาม/อีเมล
 
 ## รูปแบบการทำงาน
 
