@@ -1,53 +1,40 @@
 /**
- * Antibiogram writer — เพิ่มเข้า GAS Web App เดิม (ตัวที่รับ action append_data / ward_sync)
- * รับตารางสรุปจาก daily_etl.py (push_to_gas) แล้วเขียนทับ tab "Antibiogram"
- * ไม่มี PHI (period, stratum, organism, drug, n_tested, n_s, pct_s, lt30, intrinsic)
+ * Antibiogram writer — เพิ่มเข้า GAS Web App เดิมของ AMR Alert (ตัวที่มี doPost + jsonResp_)
+ * รับตารางสรุปจาก daily_etl.py (push_to_gas, action="antibiogram") แล้วเขียนทับ tab "Antibiogram"
+ * ในสเปรดชีต 1Lijju… (ตัวเดียวกับ ชีต1 ที่ dashboard อ่านผ่าน gviz) — ไม่มี PHI
  *
- * ── วิธีติดตั้ง ──
- * 1) เปิด Apps Script project เดิมของ Sheet (Extensions → Apps Script)
- * 2) วางฟังก์ชันด้านล่างนี้ไว้ท้ายไฟล์ Code.gs
- * 3) ใน doPost(e) เดิม เพิ่มการแยก action ก่อน return เดิม เช่น:
+ * ── วิธีติดตั้ง (ทำในโปรเจกต์ Apps Script ของ AMR Alert ที่ deploy เป็น GAS_URL) ──
+ * 1) ในฟังก์ชัน doPost(e) เพิ่ม routing 1 บรรทัด (วางรวมกับ action อื่น ก่อน default handleAmrAlert_):
  *
- *       var data = JSON.parse(e.postData.contents);
- *       if (data.action === 'antibiogram') return abWrite_(data);     // <-- เพิ่มบรรทัดนี้
- *       // ... (append_data / ward_sync / daily_report เดิม)
+ *        if (data.action === "antibiogram") {
+ *          return handleAntibiogram_(data);
+ *        }
  *
- * 4) Deploy → Manage deployments → Edit → New version → Deploy (URL เดิมไม่เปลี่ยน)
+ *    (secret ตรวจที่ doPost อยู่แล้ว — ไม่ต้องเช็กซ้ำในฟังก์ชันนี้)
+ *
+ * 2) วางฟังก์ชัน handleAntibiogram_ ด้านล่างนี้ไว้ท้ายไฟล์
+ * 3) Deploy → Manage deployments → Edit → New version → Deploy (URL เดิมไม่เปลี่ยน)
+ *
+ * สิทธิ์: โค้ดรันในนามเจ้าของโปรเจกต์ — ต้องมีสิทธิ์ "แก้ไข" สเปรดชีต AB_SHEET_ID
+ * (เจ้าของ 1Lijju = apiwatac125; ถ้า GAS เป็นของบัญชีอื่น ต้องแชร์ชีตให้บัญชีนั้นเป็น Editor)
  */
 
-var AB_SHEET = 'Antibiogram';
-var AB_SHEET_ID = '1LijjuAYdKmwqr2Daix-usN2FlZzMNbl62VPXMkCaSww';  // สเปรดชีตเดียวกับ ชีต1 lookup
+var AB_SHEET    = 'Antibiogram';
+var AB_SHEET_ID = '1LijjuAYdKmwqr2Daix-usN2FlZzMNbl62VPXMkCaSww';  // สเปรดชีตเดียวกับ ชีต1 (ที่ dashboard อ่าน)
 
-function abWrite_(data) {
-  // ตรวจ secret เฉพาะเมื่อมีตั้งไว้ (ปัจจุบัน API_SECRET ว่าง -> ไม่บังคับ เหมือน action อื่น)
-  var expect = _ab_secret_();
-  if (expect && data && data.secret !== expect) {
-    return _ab_json_({status: 'error', error: 'bad secret'});
-  }
+function handleAntibiogram_(data) {
   var ss = SpreadsheetApp.openById(AB_SHEET_ID);
   var sh = ss.getSheetByName(AB_SHEET) || ss.insertSheet(AB_SHEET);
-
   var rows = data.rows || [];
-  if (data.mode === 'overwrite') {
+  if (data.mode === 'overwrite') {            // ก้อนแรกของแต่ละวัน — ล้างของเดิมแล้วเขียนหัวตาราง
     sh.clearContents();
     if (data.header && data.header.length) {
       sh.getRange(1, 1, 1, data.header.length).setValues([data.header]);
     }
   }
-  if (rows.length) {
-    var startRow = sh.getLastRow() + 1;              // ต่อท้ายข้อมูลที่มี (header อยู่แถว 1)
+  if (rows.length) {                          // ต่อท้ายข้อมูล (header อยู่แถว 1)
+    var startRow = sh.getLastRow() + 1;
     sh.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
   }
-  return _ab_json_({status: 'ok', wrote: rows.length, mode: data.mode});
-}
-
-/** คืนค่า API secret — ถ้าโปรเจกต์มีตัวแปร/ฟังก์ชันเดิมอยู่แล้ว ให้ชี้มาที่ตัวนั้นแทน */
-function _ab_secret_() {
-  // เปลี่ยนให้ตรงกับที่โปรเจกต์ใช้ เช่น return API_SECRET; หรือ
-  return PropertiesService.getScriptProperties().getProperty('API_SECRET');
-}
-
-function _ab_json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-      .setMimeType(ContentService.MimeType.JSON);
+  return jsonResp_({ status: 'ok', wrote: rows.length, mode: data.mode });  // ใช้ jsonResp_ เดิมของโปรเจกต์
 }
