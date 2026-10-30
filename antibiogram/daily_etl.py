@@ -103,8 +103,10 @@ def build_summary(std: pd.DataFrame, ab_cols: list[str], conditions: dict,
             strata.append(("specimen", str(sp), std[std["specimen"] == sp]))
     if by_origin and "infection_origin" in std.columns:
         present = set(std["infection_origin"].dropna().unique())
-        for o in ("CAI", "HAI"):
-            if o in present:
+        # แยก CAI/HAI เฉพาะเมื่อมี "ทั้งคู่" จริง (ต้องมี qr1020 เข้ามา join admission)
+        # ถ้าไม่มี qr1020 ตัวจำแนกจะตีเป็นค่า default ค่าเดียวหมด -> ไม่ใช่การแยกจริง จึงไม่โชว์
+        if {"CAI", "HAI"} <= present:
+            for o in ("CAI", "HAI"):
                 strata.append(("origin", o, std[std["infection_origin"] == o]))
 
     rows: list[dict] = []
