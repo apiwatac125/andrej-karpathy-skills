@@ -189,9 +189,11 @@ function transform(rows){
     if (strata.indexOf(r.stratum)<0) strata.push(r.stratum);
     var S = byStratum[r.stratum] || (byStratum[r.stratum]={yearsSet:{},roll:'',cells:{},N:{},drugsSet:{}});
     var isYear = /^\d{4}$/.test(r.period);
-    var isRoll = /^rolling/i.test(r.period);
+    // gviz ตีคอลัมน์ period เป็นตัวเลข (เพราะปีเป็นเลข) -> ค่า "rolling12m" กลายเป็นว่าง
+    // => period ว่าง = แถว rolling (ปีจะไม่ว่างเสมอ) ครอบคลุมทั้งกรณี text ตรง ๆ และกรณีถูก coerce
+    var isRoll = /^rolling/i.test(r.period) || r.period === '' || r.period == null;
     if (isYear) S.yearsSet[r.period]=1;
-    if (isRoll) S.roll=r.period;
+    if (isRoll) S.roll = r.period || 'rolling12m';
     var field = isYear ? ('Y'+r.period) : (isRoll ? 'roll' : null);
     if (!field) return;
     S.drugsSet[r.drug]=1;

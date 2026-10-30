@@ -34,6 +34,9 @@ function handleAntibiogram_(data) {
   }
   if (rows.length) {                          // ต่อท้ายข้อมูล (header อยู่แถว 1)
     var startRow = sh.getLastRow() + 1;
+    // สำคัญ: บังคับคอลัมน์ A (period) เป็น "ข้อความ" ก่อนเขียน — ไม่งั้นปี 2022 ถูกเก็บเป็นตัวเลข
+    // ทำให้ gviz ตีทั้งคอลัมน์เป็น number แล้วค่า "rolling12m" กลายเป็น null (panel 12 เดือนหาย)
+    sh.getRange(startRow, 1, rows.length, 1).setNumberFormat('@');
     sh.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
   }
   return jsonResp_({ status: 'ok', wrote: rows.length, mode: data.mode });  // ใช้ jsonResp_ เดิมของโปรเจกต์
