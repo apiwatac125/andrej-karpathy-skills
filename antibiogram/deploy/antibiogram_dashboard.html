@@ -107,6 +107,8 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
       </div>
       <span class="lab" style="margin-left:6px">กลุ่ม</span>
       <select class="sel" id="stratumSel" aria-label="กลุ่ม"></select>
+      <span class="lab" style="margin-left:6px">ปี (รายปี)</span>
+      <select class="sel" id="yearSel" aria-label="ปีรายปี"></select>
     </div>
 
     <div class="panels both" id="panels"><div class="msg" id="msg">กำลังโหลดข้อมูล…</div></div>
@@ -145,7 +147,22 @@ var ORDER = Object.keys(ABBR);
 function drugRank(d){ var i=ORDER.indexOf(d); return i<0?999:i; }
 
 var DATA = null;    // {strata:[...], byStratum:{st:{years:[],roll:'',orgs:[],drugs:[],cells:{org:{drug:{annual,roll}}},N:{org:{annual,roll}}}}}
-var mode = 'both', stratum = null;
+var mode = 'both', stratum = null, annualYear = null;
+
+// default ช่องรายปี = ปีล่าสุดที่ "จบแล้ว" (น้อยกว่าปีปัจจุบัน) ไม่ใช่ปีที่ยังเดินอยู่
+function defaultAnnualYear(S){
+  var cur = new Date().getFullYear();
+  var done = S.years.filter(function(y){ return Number(y) < cur; });
+  return done.length ? done[done.length-1] : S.years[S.years.length-1];
+}
+function fillYearSel(S){
+  var sel = document.getElementById('yearSel');
+  sel.innerHTML = S.years.slice().reverse().map(function(y){
+    return '<option value="'+y+'">'+(Number(y)+543)+' ('+y+')</option>';
+  }).join('');
+  if (S.years.indexOf(annualYear) < 0) annualYear = defaultAnnualYear(S);
+  sel.value = annualYear;
+}
 
 // ─────────── gviz JSONP (ไม่ต้องใช้ไลบรารีนอก) ───────────
 function loadSheet(){
@@ -243,9 +260,10 @@ function Nrange(S, field){
 }
 function panel(S, which){
   var ann = which==='annual';
-  var field = ann ? S.annualField : 'roll';
-  if (!field) return '<div class="panel"><div class="panel-head"><span class="panel-title">'+(ann?'รายปี':'12 เดือนล่าสุด')+'</span></div><div class="msg">ไม่มีข้อมูลช่วงนี้</div></div>';
-  var title = ann ? ('รายปี '+(Number(S.annualYear)+543)+' ('+S.annualYear+')') : '12 เดือนล่าสุด (rolling)';
+  var yr = (annualYear && S.years.indexOf(annualYear) >= 0) ? annualYear : S.annualYear;
+  var field = ann ? ('Y'+yr) : 'roll';
+  if (ann && !yr) return '<div class="panel"><div class="panel-head"><span class="panel-title">รายปี</span></div><div class="msg">ไม่มีข้อมูลช่วงนี้</div></div>';
+  var title = ann ? ('รายปี '+(Number(yr)+543)+' ('+yr+')') : '12 เดือนล่าสุด (rolling)';
   var meta  = ann ? ('ปีปฏิทิน · '+Nrange(S,field)) : (Nrange(S,'roll'));
   return '<div class="panel"><div class="panel-head '+(ann?'ann':'roll')+'">'+
     '<span class="panel-title">'+title+'</span><span class="panel-meta">'+meta+'</span></div>'+
@@ -264,6 +282,7 @@ function initUI(){
   var sel=document.getElementById('stratumSel');
   sel.innerHTML = DATA.strata.map(function(s){ return '<option>'+s+'</option>'; }).join('');
   stratum = DATA.strata[0];
+  fillYearSel(DATA.byStratum[stratum]);
   document.getElementById('ctrls').style.display='flex';
   document.getElementById('legend').style.display='flex';
   document.getElementById('notes').style.display='block';
@@ -279,7 +298,8 @@ document.getElementById('modePills').addEventListener('click', function(e){
   document.querySelectorAll('#modePills .pill').forEach(function(p){ p.setAttribute('aria-pressed', p===b); });
   render();
 });
-document.getElementById('stratumSel').addEventListener('change', function(e){ stratum=e.target.value; render(); });
+document.getElementById('stratumSel').addEventListener('change', function(e){ stratum=e.target.value; fillYearSel(DATA.byStratum[stratum]); render(); });
+document.getElementById('yearSel').addEventListener('change', function(e){ annualYear=e.target.value; render(); });
 document.getElementById('loadBtn').addEventListener('click', function(){
   var v=document.getElementById('sheetInput').value.trim();
   var m=v.match(/\/d\/([a-zA-Z0-9_-]+)/); SHEET_ID = m ? m[1] : v;          // รับทั้ง URL เต็มและ ID
