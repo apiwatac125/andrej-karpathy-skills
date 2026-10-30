@@ -86,7 +86,9 @@ def compute_antibiogram(
                 }
             )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=["organism", "antibiotic", "n_tested",
+                                       "n_susceptible", "pct_susceptible",
+                                       "reportable", "intrinsic"])
 
 
 def to_matrix(antibiogram_long: pd.DataFrame, show_unreportable: bool = False) -> pd.DataFrame:

@@ -70,8 +70,21 @@ def main():
     assert len(dd) == 2
     assert dd[(dd.REF_NO == "A")].iloc[0]["MEM"] == "S"  # ฉบับ 01-03 ชนะ
 
+    # regression: specimen ที่โผล่เฉพาะบางปี -> (specimen × ปีที่ไม่มีข้อมูล) ต้องไม่ทำให้พัง
+    extra = pd.DataFrame([{
+        "hn": f"X{i:04d}", "organism": "Escherichia coli", "specimen": "CSF",
+        "ward": "ICU", "infection_origin": "HAI",
+        "collect_datetime": pd.Timestamp(year=2025, month=6, day=1),
+        "CAZ": "S", "CRO": "S", "MEM": "S",
+    } for i in range(3)])
+    std2 = pd.concat([std, extra], ignore_index=True)
+    summary2 = daily_etl.build_summary(std2, AB_COLS, conditions, rolling_months=12)
+    assert "CSF" in set(summary2["stratum"])
+    # CSF มีเฉพาะปี 2025 -> ต้องไม่มีแถว CSF ปี 2024
+    assert summary2[(summary2.stratum == "CSF") & (summary2.period == "2024")].empty
+
     print(f"OK — {len(summary)} แถวสรุป · ช่วง={sorted(periods)} · กลุ่ม={sorted(strata)} · "
-          f"E.coli MEM 2025 All: {got['pct_s']}%S (N={got['n_tested']})")
+          f"E.coli MEM 2025 All: {got['pct_s']}%S (N={got['n_tested']}) · empty-stratum ok")
 
 
 if __name__ == "__main__":

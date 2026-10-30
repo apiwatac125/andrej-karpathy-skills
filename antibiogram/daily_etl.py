@@ -91,27 +91,37 @@ def _emit(res, period, stratum_type, stratum, rows: list[dict]):
 def build_summary(std: pd.DataFrame, ab_cols: list[str], conditions: dict,
                   rolling_months: int = 12, by_specimen: bool = True,
                   by_origin: bool = True) -> pd.DataFrame:
-    """คืนตารางสรุป antibiogram ทุกช่วง × ทุกกลุ่ม (ไม่มี PHI)."""
-    dt = pd.to_datetime(std.get("collect_datetime"), errors="coerce")
-    years = sorted({int(y) for y in dt.dropna().dt.year.unique()})
+    """คืนตารางสรุป antibiogram ทุกช่วง × ทุกกลุ่ม (ไม่มี PHI).
 
-    strata = [("all", "All", {})]
+    กรองข้อมูลต่อกลุ่มก่อน แล้ววนเฉพาะปีที่กลุ่มนั้น "มีข้อมูลจริง" และ rolling เฉพาะเมื่อ
+    หน้าต่างย้อนหลังไม่ว่าง — เลี่ยงการเรียก finalize บน subset ว่าง (ซึ่งทำให้ engine พัง).
+    """
+    # (ชนิดกลุ่ม, ชื่อกลุ่ม, subset ที่กรองแล้ว)
+    strata = [("all", "All", std)]
     if by_specimen and "specimen" in std.columns:
         for sp in sorted(x for x in std["specimen"].dropna().unique() if str(x).strip()):
-            strata.append(("specimen", str(sp), {"specimens": [sp]}))
+            strata.append(("specimen", str(sp), std[std["specimen"] == sp]))
     if by_origin and "infection_origin" in std.columns:
         present = set(std["infection_origin"].dropna().unique())
         for o in ("CAI", "HAI"):
             if o in present:
-                strata.append(("origin", o, {"origins": [o]}))
+                strata.append(("origin", o, std[std["infection_origin"] == o]))
 
     rows: list[dict] = []
-    for st_type, st_name, kw in strata:
-        for y in years:
-            _emit(rolling.annual(std, ab_cols, conditions, year=y, **kw),
+    for st_type, st_name, sub in strata:
+        if sub.empty:
+            continue
+        dt = pd.to_datetime(sub["collect_datetime"], errors="coerce")
+        sub_years = sorted({int(y) for y in dt.dropna().dt.year.unique()})
+        for y in sub_years:   # ปีที่กลุ่มนี้มีข้อมูล -> หน้าต่างรายปีไม่ว่างแน่นอน
+            _emit(rolling.annual(sub, ab_cols, conditions, year=y),
                   str(y), st_type, st_name, rows)
-        _emit(rolling.rolling(std, ab_cols, conditions, months=rolling_months, **kw),
-              f"rolling{rolling_months}m", st_type, st_name, rows)
+        end = rolling.data_end(sub)
+        if end is not None:   # rolling เฉพาะเมื่อมี isolate ในหน้าต่างย้อนหลัง
+            start = end - pd.DateOffset(months=rolling_months)
+            if not rolling._window(sub, start, end).empty:
+                _emit(rolling.rolling(sub, ab_cols, conditions, months=rolling_months),
+                      f"rolling{rolling_months}m", st_type, st_name, rows)
 
     df = pd.DataFrame(rows, columns=OUT_COLS)
     leaked = PHI_COLS & set(c.lower() for c in df.columns)
