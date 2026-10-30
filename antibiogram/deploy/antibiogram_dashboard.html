@@ -183,7 +183,8 @@ function onData(resp){
   var cols = resp.table.cols.map(function(c){ return (c.label||'').trim(); });
   function idx(name){ return cols.indexOf(name); }
   var iP=idx('period'), iSt=idx('stratum'), iOrg=idx('organism'), iDrug=idx('drug'),
-      iNt=idx('n_tested'), iPct=idx('pct_s'), iLt=idx('lt30'), iIn=idx('intrinsic');
+      iNt=idx('n_tested'), iPct=idx('pct_s'), iLt=idx('lt30'), iIn=idx('intrinsic'),
+      iPs=idx('period_start'), iPe=idx('period_end');
   if (iOrg<0 || iDrug<0){ setMsg('header ในชีตไม่ตรง (ต้องมี organism, drug, period, …)','err'); return; }
   var rows = resp.table.rows.map(function(r){
     // gviz ตีชนิดคอลัมน์จากข้อมูล: คอลัมน์ period มีปี(ตัวเลข)ปน "rolling12m"(ข้อความ)
@@ -193,7 +194,8 @@ function onData(resp){
              drug:String(v(iDrug)), n:Number(v(iNt))||0,
              pct: v(iPct)===''||v(iPct)==null ? null : Number(v(iPct)),
              lt30: v(iLt)===true||String(v(iLt)).toUpperCase()==='TRUE',
-             intrinsic: v(iIn)===true||String(v(iIn)).toUpperCase()==='TRUE' };
+             intrinsic: v(iIn)===true||String(v(iIn)).toUpperCase()==='TRUE',
+             start:v(iPs), end:v(iPe) };
   });
   DATA = transform(rows);
   if (!DATA.strata.length){ setMsg('ชีตยังไม่มีข้อมูล','err'); return; }
@@ -213,6 +215,8 @@ function transform(rows){
     if (isRoll) S.roll = r.period || 'rolling12m';
     var field = isYear ? ('Y'+r.period) : (isRoll ? 'roll' : null);
     if (!field) return;
+    if (!S.win) S.win = {};
+    if (!S.win[field]) S.win[field] = {start: r.start, end: r.end};  // ช่วงวันที่ของแต่ละช่วง
     S.drugsSet[r.drug]=1;
     var oc = S.cells[r.organism] || (S.cells[r.organism]={});
     var dc = oc[r.drug] || (oc[r.drug]={});
@@ -235,6 +239,20 @@ function transform(rows){
 }
 
 // ─────────── render (จาก mockup) ───────────
+// gviz อาจคืนวันที่เป็น "Date(2025,9,30)" (เดือน 0-based) หรือสตริง "2025-10-30" -> แปลงเป็น d/m/ปีพ.ศ.
+function gdate(val){
+  if(val==null||val==='') return '';
+  var s=String(val), m=s.match(/^Date\((\d+),(\d+),(\d+)/);
+  var y,mo,d;
+  if(m){ y=+m[1]; mo=+m[2]+1; d=+m[3]; }
+  else { var m2=s.match(/(\d{4})-(\d{2})-(\d{2})/); if(!m2) return s; y=+m2[1]; mo=+m2[2]; d=+m2[3]; }
+  function p(n){ return (n<10?'0':'')+n; }
+  return p(d)+'/'+p(mo)+'/'+(y+543);
+}
+function winText(S, field){
+  var w = S.win && S.win[field];
+  return (w && (w.start||w.end)) ? (gdate(w.start)+' – '+gdate(w.end)) : '';
+}
 function band(v){ return v>=90?'b90':v>=80?'b80':v>=70?'b70':v>=51?'b51':'b50'; }
 function cellHTML(c, field){
   if(!c) return '<td class="cell empty">·</td>';
@@ -264,7 +282,8 @@ function panel(S, which){
   var field = ann ? ('Y'+yr) : 'roll';
   if (ann && !yr) return '<div class="panel"><div class="panel-head"><span class="panel-title">รายปี</span></div><div class="msg">ไม่มีข้อมูลช่วงนี้</div></div>';
   var title = ann ? ('รายปี '+(Number(yr)+543)+' ('+yr+')') : '12 เดือนล่าสุด (rolling)';
-  var meta  = ann ? ('ปีปฏิทิน · '+Nrange(S,field)) : (Nrange(S,'roll'));
+  var win   = ann ? '' : winText(S, field);   // รายปี = ปีปฏิทิน (ไม่โชว์ขอบวันที่) · rolling โชว์ช่วงวันจริง
+  var meta  = (win ? win+' · ' : (ann ? 'ปีปฏิทิน · ' : '')) + Nrange(S, field);
   return '<div class="panel"><div class="panel-head '+(ann?'ann':'roll')+'">'+
     '<span class="panel-title">'+title+'</span><span class="panel-meta">'+meta+'</span></div>'+
     '<div class="tscroll">'+tableHTML(S, field)+'</div></div>';
