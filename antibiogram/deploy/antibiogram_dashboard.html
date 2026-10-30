@@ -169,7 +169,9 @@ function onData(resp){
       iNt=idx('n_tested'), iPct=idx('pct_s'), iLt=idx('lt30'), iIn=idx('intrinsic');
   if (iOrg<0 || iDrug<0){ setMsg('header ในชีตไม่ตรง (ต้องมี organism, drug, period, …)','err'); return; }
   var rows = resp.table.rows.map(function(r){
-    function v(i){ return i<0||!r.c[i] ? '' : r.c[i].v; }
+    // gviz ตีชนิดคอลัมน์จากข้อมูล: คอลัมน์ period มีปี(ตัวเลข)ปน "rolling12m"(ข้อความ)
+    // -> gviz มองเป็นตัวเลข แล้วค่าข้อความกลายเป็น v=null, f="rolling12m" -> ต้อง fallback ไป f
+    function v(i){ if(i<0||!r.c[i]) return ''; var c=r.c[i]; return c.v!=null ? c.v : (c.f!=null ? c.f : ''); }
     return { period:String(v(iP)), stratum:String(v(iSt)||'All'), organism:String(v(iOrg)),
              drug:String(v(iDrug)), n:Number(v(iNt))||0,
              pct: v(iPct)===''||v(iPct)==null ? null : Number(v(iPct)),
