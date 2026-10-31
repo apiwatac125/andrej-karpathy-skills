@@ -5,13 +5,20 @@
  *   SETTING_LINKS  ใน Config.gs                   ลิงก์เชื่อมระบบอื่น เก็บเป็น Script Property ชื่อตาม key
  */
 
-/** ชื่อระบบ หน่วยงาน โลโก้ ที่ใช้จริง */
+/**
+ * ชื่อระบบ หน่วยงาน โลโก้ ที่ใช้จริง
+ *   logoUrl = URL ที่ผู้ดูแลตั้งเอง (ว่าง = ใช้โลโก้โรงพยาบาลใน Logo.gs)
+ *   logo / logoFull = รูปที่แสดงจริง: สัญลักษณ์ (หัวเว็บ) / โลโก้เต็ม (หน้าเข้าสู่ระบบ) — ตั้ง URL เองใช้รูปนั้นทั้งสองที่
+ */
 function appInfo_() {
   var saved = readJsonProp_('APP_SETTINGS');
+  var logoUrl = saved.logoUrl === undefined ? APP.logoUrl : saved.logoUrl;
   return {
     title: saved.title || APP.title,
     org: saved.org || APP.org,
-    logoUrl: saved.logoUrl === undefined ? APP.logoUrl : saved.logoUrl
+    logoUrl: logoUrl,
+    logo: logoUrl || LOGO_MARK,
+    logoFull: logoUrl || LOGO_FULL
   };
 }
 
@@ -34,8 +41,9 @@ function adminGetSettings(token) {
   requireLevel_(token, ADMIN_LEVEL);
   var props = PropertiesService.getScriptProperties();
   var levels = menuLevels_();
+  var app = appInfo_();
   return {
-    app: appInfo_(),
+    app: { title: app.title, org: app.org, logoUrl: app.logoUrl },   // ไม่ส่งรูปที่ฝังไว้ลงช่อง URL
     links: SETTING_LINKS.map(function (l) {
       return { key: l.key, label: l.label, hint: l.hint, value: props.getProperty(l.key) || '' };
     }),

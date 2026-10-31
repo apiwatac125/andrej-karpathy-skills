@@ -13,7 +13,7 @@
   <div id="login" class="login" hidden>
     <form id="login-form" class="login-card">
       <div class="brand">
-        <div class="logo js-logo"></div>
+        <img class="brand-logo js-logo-full" alt="โลโก้โรงพยาบาล">
         <div><b class="js-title"></b><span class="mini js-org"></span></div>
       </div>
       <div class="field">
@@ -140,10 +140,9 @@
     document.querySelectorAll('.js-title').forEach(function (el) { el.textContent = APP.title; });
     document.querySelectorAll('.js-org').forEach(function (el) { el.textContent = APP.org; });
     document.querySelectorAll('.js-logo').forEach(function (el) {
-      if (APP.logoUrl) el.innerHTML = '<img src="' + esc(APP.logoUrl) + '" alt="โลโก้">';
-      else el.textContent = 'โลโก้';
-      el.classList.toggle('empty', !APP.logoUrl);
+      el.innerHTML = '<img src="' + esc(APP.logo) + '" alt="โลโก้">';
     });
+    document.querySelectorAll('.js-logo-full').forEach(function (el) { el.src = APP.logoFull; });
   }
 
   // ============================================================
@@ -581,7 +580,7 @@
     var html = '<div class="card"><h3>ข้อมูลหน้าระบบ</h3>' +
       field('set-title', 'ชื่อระบบ', 'text', s.app.title) +
       field('set-org', 'หน่วยงาน', 'text', s.app.org) +
-      field('set-logo', 'URL รูปโลโก้ (เว้นว่าง = ไม่มีโลโก้)', 'text', s.app.logoUrl, 'placeholder="https://..."') +
+      field('set-logo', 'URL รูปโลโก้ (เว้นว่าง = โลโก้โรงพยาบาลเลิดสิน)', 'text', s.app.logoUrl, 'placeholder="https://..."') +
       '</div><div class="card"><h3>การเชื่อมต่อระบบ</h3>';
     s.links.forEach(function (l) {
       html += field('link-' + l.key, l.label + ' (' + l.hint + ')', 'text', l.value, 'autocapitalize="none"');

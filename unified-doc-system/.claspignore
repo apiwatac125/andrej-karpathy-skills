@@ -3,6 +3,7 @@
 !appsscript.json
 # หน้าหลัก
 !Config.gs
+!Logo.gs
 !Auth.gs
 !Shell.gs
 !Search.gs

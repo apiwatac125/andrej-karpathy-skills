@@ -18,7 +18,7 @@ def read(name):
     return (ROOT / name).read_text(encoding='utf-8')
 
 
-server = '\n'.join(read(n) for n in ('Config.gs', 'Auth.gs', 'Shell.gs', 'Search.gs', 'Settings.gs'))
+server = '\n'.join(read(n) for n in ('Config.gs', 'Logo.gs', 'Auth.gs', 'Shell.gs', 'Search.gs', 'Settings.gs'))
 # google.script.run เรียกได้เฉพาะฟังก์ชันที่ชื่อไม่ลงท้ายด้วย _ — จำลองตามนั้น
 assert '</script' not in server, 'โค้ด .gs มีคำว่า </script ซึ่งจะปิดแท็ก script ของหน้าตัวอย่าง'
 public = [n for n in re.findall(r'^function (\w+)\s*\(', server, re.M) if not n.endswith('_')]
@@ -37,7 +37,7 @@ page = f"""<title>ระบบงานเอกสาร</title>
 (function () {{
 {read('preview/mock.js')}
 {server}
-__start({{ {exports} }}, APP);
+__start({{ {exports} }}, appInfo_());
 }})();
 </script>
 {body}"""

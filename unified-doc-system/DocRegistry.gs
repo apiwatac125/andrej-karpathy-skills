@@ -281,11 +281,13 @@ function getMasterList(token) {
   });
   docs.sort(function (a, b) { return a.docCode.localeCompare(b.docCode, 'en', { numeric: true }); });
 
+  const app = appInfo_();
   return {
     docs: docs,
     docTypes: DOC_TYPES,
     units: Object.keys(getUnitMap_()).sort(function (a, b) { return a.localeCompare(b, 'th'); }),
-    org: appInfo_().org,   // หัวกระดาษตอนพิมพ์ ใช้ชื่อหน่วยงานของระบบงานเอกสาร (หน้าตั้งค่าระบบ)
+    org: app.org,     // หัวกระดาษตอนพิมพ์ ใช้ชื่อหน่วยงานและโลโก้ของระบบงานเอกสาร (หน้าตั้งค่าระบบ)
+    logo: app.logo,
     printedAt: formatThaiDate_(new Date())
   };
 }

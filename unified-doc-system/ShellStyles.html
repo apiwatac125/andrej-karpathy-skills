@@ -7,17 +7,21 @@
     --ink: #1a1a2e;
     --gray: #6b7280;
     --border: #d9dde3;
-    --bg: #f5f6f8;
+    --bg: #f3f7fa;
     --paper: #ffffff;
-    --brand: #1d4ed8;
-    --brand-dark: #1737a8;
-    --brand-soft: #e8edfb;
+    /* สีจากโลโก้โรงพยาบาลเลิดสิน: ฟ้า #49b9ea + ทองไล่เฉด — ปุ่ม/ลิงก์ใช้ฟ้าเข้มขึ้นให้ตัวอักษรขาวอ่านชัด (5:1) */
+    --brand: #0d77a5;
+    --brand-dark: #0b668e;
+    --brand-soft: #e6f5fc;
+    --logo-blue: #49b9ea;
+    --gold: #e2ad4d;
+    --gold-grad: linear-gradient(90deg, #e2ad4d, #f9f18b 55%, #f1d268);
     --on-brand: #ffffff;
     --ok: #0f7b4f;
     --warn: #b45309;
     --warn-soft: #fff6e5;
     --warn-line: #f0d08a;
-    --mark: #fff3bf;
+    --mark: #fbefc0;
     --danger: #b42318;
     --shade: rgba(26, 26, 46, .38);
     --side-w: 290px;
@@ -87,22 +91,25 @@
   code { font-family: ui-monospace, 'Consolas', monospace; font-size: .9em; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
 
   /* ---------- หน้าเข้าสู่ระบบ ---------- */
-  .login { min-height: 100%; display: grid; place-items: center; padding-block: 32px; padding-left: 16px; padding-right: 16px; }
-  .login-card {
-    width: 100%; max-width: 440px; background: var(--paper);
-    border: 1px solid var(--border); border-radius: 12px; padding: 26px 24px;
+  .login {
+    min-height: 100%; display: grid; place-items: center; padding-block: 32px; padding-left: 16px; padding-right: 16px;
+    background: linear-gradient(160deg, var(--brand-soft), var(--bg) 60%);
   }
-  .login-card .brand { display: flex; gap: 14px; align-items: center; margin-bottom: 22px; }
-  .login-card .brand b { display: block; font-size: 21px; }
+  .login-card {
+    width: 100%; max-width: 440px;
+    background: var(--gold-grad) top / 100% 5px no-repeat, var(--paper);
+    border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px 26px;
+    box-shadow: 0 12px 32px -18px var(--shade);
+  }
+  .login-card .brand { display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center; margin-bottom: 22px; }
+  .login-card .brand b { display: block; font-size: 21px; color: var(--brand-dark); }
+  .login-card .brand .mini { display: block; text-wrap: balance; }
+  .brand-logo { display: block; width: 210px; max-width: 70%; height: auto; }
   .login-card .primary { width: 100%; margin-top: 4px; }
   .login-card > .mini { margin: 16px 0 0; }
 
   /* ---------- โลโก้ + ชื่อระบบ ---------- */
-  .logo {
-    flex: 0 0 auto; width: 56px; height: 56px; display: grid; place-items: center;
-    border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--paper);
-  }
-  .logo.empty { border-style: dashed; color: var(--gray); font-size: 13px; }
+  .logo { flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; }
   .logo img { max-width: 100%; max-height: 100%; }
 
   /* ---------- โครงหน้าหลัก ---------- */
@@ -123,13 +130,13 @@
   .who b { display: block; font-size: 18px; overflow-wrap: anywhere; }
   .role-chip {
     display: inline-block; margin-top: 4px; padding: 1px 10px; border-radius: 999px;
-    font-size: 13px; font-weight: 600; background: var(--brand-soft); color: var(--brand);
+    font-size: 13px; font-weight: 600; background: var(--brand-soft); color: var(--brand-dark);
   }
   .user-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; }
 
   #menu { padding-bottom: 24px; }
   .group { padding: 12px 0 8px; border-bottom: 1px solid var(--border); }
-  .group-name { padding: 0 16px 6px; font-weight: 700; font-size: 16px; }
+  .group-name { padding: 0 16px 6px; font-weight: 700; font-size: 16px; color: var(--brand-dark); }
   .item {
     display: flex; gap: 8px; align-items: baseline; width: 100%; position: relative;
     margin: 0; padding: 7px 14px 7px 34px; border: 0; border-radius: 0;
@@ -137,7 +144,7 @@
   }
   .item::before { content: '\25B9'; position: absolute; left: 16px; color: var(--gray); }
   .item:hover { background: var(--bg); }
-  .item.active { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .item.active { background: var(--brand-soft); color: var(--brand-dark); font-weight: 600; box-shadow: inset 4px 0 0 var(--gold); }
   .item.active::before { color: var(--brand); }
   .soon {
     margin-left: auto; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px;
@@ -149,12 +156,12 @@
   }
 
   .top {
-    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
-    background: var(--paper); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px; padding: 10px 20px;
+    background: var(--paper); border-bottom: 3px solid; border-image: var(--gold-grad) 1;
   }
   .app:not(.menu-hidden) #btn-show { display: none; }
   .top-title { min-width: 0; line-height: 1.35; }
-  .top-title b { display: block; font-size: 21px; }
+  .top-title b { display: block; font-size: 21px; color: var(--brand-dark); }
   .top-title span { color: var(--gray); font-size: 16px; }
 
   .bar {
@@ -248,7 +255,7 @@
     .top { padding: 10px 16px; gap: 10px; }
     .top-title b { font-size: 18px; }
     .top-title span { font-size: 14px; }
-    .logo { width: 44px; height: 44px; }
+    .logo { width: 42px; height: 42px; }
     .bar { padding: 6px 16px; }
     .view { padding-block: 18px 110px; padding-left: 16px; padding-right: 16px; }
   }
