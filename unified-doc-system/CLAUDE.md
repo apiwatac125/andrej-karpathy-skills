@@ -74,8 +74,13 @@ LINE ไปก่อน — วางแผน 5 เฟส (README หัวข�
   หัวกระดาษใช้ `appInfo_().org`
 - ทดสอบ (scratchpad): `test-registry.js` รัน .gs จริงทั้งโปรเจกต์บน mock + stub Drive/Mail/Lock (48 ข้อ) ·
   `test-wi-pages.js` หน้า Upload/MasterList จริงบน google.script.run จำลอง (38 ข้อ)
-- **หลัง deploy ผู้ใช้ต้องใส่ `unit_code` ของทุกงานในแท็บ Units** (ไม่รู้รหัสงานจริง ยกเว้น MB = จุลชีววิทยา
-  จาก `WI-MB-08`) และติ๊กหน้าที่ QMR ให้คนที่ขึ้นทะเบียน — ไม่มี scope ใหม่ ไม่ต้องรัน setup ซ้ำ
+- **งานจริง 4 งาน** (ผู้ใช้ให้มา 2026-10-31): จุลชีววิทยาคลินิก MB · ห้องปฏิบัติการกลาง CL · ธนาคารเลือด BB ·
+  ชีวโมเลกุล (ยังไม่มีรหัส) → `UNIT_LIST` ใน Code.gs (แทน `DEFAULT_UNITS` 6 งานที่ WI เดาไว้)
+  · ชีตจริงตอนนั้นยังเป็น 6 งานที่เดา + ผู้ใช้กรอก reviewer_title (จุลฯ) / approver_title (ทุกงาน) ไว้ (อ่านผ่าน
+  Google Drive connector) → `syncUnitsOnce_()` (DocRegistry.gs) ปรับครั้งเดียวจาก `getUnitMap_` / `runSetup`
+  ไม่ต้องรัน setup: rename `renamedFrom` เก็บค่าเดิม · เพิ่มงานที่ขาดพร้อม approver_title ร่วม · ลบ `RETIRED_UNITS`
+  ที่ไม่มีเอกสาร/DAR ใช้ · ธงใน Script Property `WI_UNITS_SYNCED` (ลบธงแล้วจะรันใหม่)
+- ผู้ใช้ต้องติ๊กหน้าที่ QMR ให้คนที่ขึ้นทะเบียนเอง — ไม่มี scope ใหม่ (LockService ไม่ต้องขอสิทธิ์)
 
 ## สถาปัตยกรรม / การตัดสินใจสำคัญ
 

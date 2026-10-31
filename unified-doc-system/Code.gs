@@ -91,14 +91,20 @@ const ALLOWED_MIME = [
 const THAI_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 
-const DEFAULT_UNITS = [
-  'งานจุลชีววิทยา',
-  'งานเคมีคลินิก',
-  'งานโลหิตวิทยา',
-  'งานภูมิคุ้มกันวิทยา',
-  'งานธนาคารเลือด',
-  'งานรับสิ่งส่งตรวจ'
+/**
+ * งานของกลุ่มงาน + รหัสงานในเลขที่เอกสาร (ผู้ใช้ให้มา 2026-10-31) — code ว่าง = ยังไม่กำหนด ออกรหัสไม่ได้
+ * renamedFrom = ชื่อที่ WI v2.2 เดาไว้ตอนแรกและ runSetup เคยใส่ลงแท็บ Units — syncUnits_ (DocRegistry.gs) เปลี่ยนชื่อให้
+ */
+const UNIT_LIST = [
+  { unit: 'งานจุลชีววิทยาคลินิก', code: 'MB', renamedFrom: 'งานจุลชีววิทยา' },
+  { unit: 'งานห้องปฏิบัติการกลาง', code: 'CL' },
+  { unit: 'งานธนาคารเลือด', code: 'BB' },
+  { unit: 'งานชีวโมเลกุล', code: '' }
 ];
+const DEFAULT_UNITS = UNIT_LIST.map(function (u) { return u.unit; });
+
+/** งานที่ WI v2.2 เดาไว้แต่ไม่มีจริง — syncUnits_ ลบออกจากแท็บ Units ถ้ายังไม่มีเอกสารหรือคำขอใช้ */
+const RETIRED_UNITS = ['งานเคมีคลินิก', 'งานโลหิตวิทยา', 'งานภูมิคุ้มกันวิทยา', 'งานรับสิ่งส่งตรวจ'];
 
 // ============================================================
 // 1. ROUTER
@@ -298,15 +304,12 @@ function runSetup() {
     if (cfgKeys.indexOf(row[0]) === -1) cfg.appendRow(row);
   });
 
-  // รายชื่องานตั้งต้น (แก้/เพิ่มได้ในแท็บ Units — อีเมลต่องานจะ override ค่าใน Config)
-  const unitSh = ss.getSheetByName(SHEET_NAMES.UNITS);
-  if (unitSh.getLastRow() <= 1) {
-    DEFAULT_UNITS.forEach(function (u) { unitSh.appendRow([u, '', '', '', '', '']); });
-  }
-
   ensureDarSetup_();   // v2.1 — แท็บ DocRequests (DocRequest.gs)
   ensureSearchSetup_();// v2.2 — แท็บ DocText (DocSearch.gs)
   ensureAuditSetup_(); // v2.0 — แท็บ Audits / Findings / CAPAs / People (AuditCapa.gs)
+
+  // รายชื่องาน + รหัสงานตาม UNIT_LIST (ครั้งเดียว — แก้/เพิ่มต่อได้ในแท็บ Units อีเมลต่องานจะ override ค่าใน Config)
+  syncUnitsOnce_();
 
   Logger.log('ตั้งค่าเสร็จแล้ว: ' + ss.getUrl());
   Logger.log('ขั้นถัดไป: ใส่อีเมลผู้ทบทวน/ผู้อนุมัติในแท็บ Units (หรือ Config เป็นค่ากลาง)');
@@ -332,6 +335,7 @@ function setConfigValue_(key, value) {
 
 /** แผนที่งาน -> อีเมล/ตำแหน่งผู้ลงนาม (ว่าง = ใช้ค่ากลางใน Config) */
 function getUnitMap_() {
+  syncUnitsOnce_();   // ระบบที่ติดตั้งก่อนมี UNIT_LIST — ปรับรายชื่องานครั้งแรกที่มีคนเปิดหน้า
   const data = getSheet_(SHEET_NAMES.UNITS).getDataRange().getValues();
   if (data.length < 2) return {};
   const header = data[0];
@@ -506,7 +510,6 @@ function getDocsByCode_(docCode) {
 
 function getUploadInit(token) {
   const user = requireLevel_(token, itemLevel_(wiItem_('upload')));
-  ensureColumns_(SHEET_NAMES.UNITS, UNIT_COLUMNS);   // ชีตที่สร้างก่อนมี unit_code
   const units = Object.keys(getUnitMap_()).sort(function (a, b) { return a.localeCompare(b, 'th'); });
   return {
     units: units.length ? units : DEFAULT_UNITS,

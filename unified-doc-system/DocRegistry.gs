@@ -72,6 +72,76 @@ function nextDocCode_(docType, unit) {
   return prefix + String(max + 1).padStart(DOC_CODE_DIGITS, '0');
 }
 
+/** ปรับแท็บ Units ตาม UNIT_LIST ครั้งเดียวต่อระบบ — หลังจากนั้นแก้ในชีตได้อิสระ ระบบไม่เขียนทับอีก */
+function syncUnitsOnce_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('WI_UNITS_SYNCED')) return;
+  try {
+    syncUnits_();
+    props.setProperty('WI_UNITS_SYNCED', new Date().toISOString());
+  } catch (err) {
+    Logger.log('ปรับรายชื่องานในแท็บ Units ไม่สำเร็จ: ' + err);
+  }
+}
+
+/**
+ * ทำให้แท็บ Units มีงานครบตาม UNIT_LIST โดยไม่ทิ้งค่าที่คนกรอกไว้
+ * - งานที่มีอยู่แล้ว (ชื่อตรง หรือชื่อเดิม renamedFrom) → เปลี่ยนชื่อ + เติมรหัสงานถ้ายังว่าง เก็บอีเมล/ตำแหน่งเดิม
+ * - งานที่ยังไม่มี → เพิ่มแถว ใช้ตำแหน่งผู้อนุมัติร่วมถ้าทุกงานใช้ตำแหน่งเดียวกันอยู่แล้ว
+ * - งานใน RETIRED_UNITS → ลบ ถ้ายังไม่มีเอกสารหรือใบขออนุมัติอ้างถึง
+ */
+function syncUnits_() {
+  const sh = ensureColumns_(SHEET_NAMES.UNITS, UNIT_COLUMNS);
+  const data = sh.getDataRange().getValues();
+  const header = data[0];
+  const col = function (name) { return header.indexOf(name); };
+  const nameAt = function (i) { return String(data[i][col('unit')] || '').trim(); };
+
+  const used = {};
+  [SHEET_NAMES.DOCS, SHEET_NAMES.DOC_REQUESTS].forEach(function (name) {
+    try {
+      readTable_(name).forEach(function (r) { used[String(r.unit || '').trim()] = true; });
+    } catch (err) { /* ยังไม่มีแท็บนี้ */ }
+  });
+  const titles = {};
+  for (let i = 1; i < data.length; i++) {
+    const t = String(data[i][col('approver_title')] || '').trim();
+    if (t) titles[t] = true;
+  }
+  const sharedTitle = Object.keys(titles).length === 1 ? Object.keys(titles)[0] : '';
+  const findRow = function (name) {
+    for (let i = 1; i < data.length; i++) if (nameAt(i) === name) return i;
+    return -1;
+  };
+
+  UNIT_LIST.forEach(function (spec) {
+    let i = findRow(spec.unit);
+    if (i < 0 && spec.renamedFrom && !used[spec.renamedFrom]) {
+      i = findRow(spec.renamedFrom);
+      if (i > -1) {
+        sh.getRange(i + 1, col('unit') + 1).setValue(spec.unit);
+        data[i][col('unit')] = spec.unit;
+      }
+    }
+    if (i < 0) {
+      const line = header.map(function (h) {
+        if (h === 'unit') return spec.unit;
+        if (h === 'unit_code') return spec.code;
+        return h === 'approver_title' ? sharedTitle : '';
+      });
+      sh.appendRow(line);
+      data.push(line);
+    } else if (spec.code && !String(data[i][col('unit_code')] || '').trim()) {
+      sh.getRange(i + 1, col('unit_code') + 1).setValue(spec.code);
+    }
+  });
+
+  // ลบจากล่างขึ้นบน เลขแถวที่เหลือจะได้ไม่เลื่อน
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (RETIRED_UNITS.indexOf(nameAt(i)) > -1 && !used[nameAt(i)]) sh.deleteRow(i + 1);
+  }
+}
+
 /** หน้าส่งเอกสาร: ตัวอย่างรหัสที่เอกสารใหม่จะได้ (รหัสจริงออกตอนส่ง) */
 function getNextDocCode(token, docType, unit) {
   requireLevel_(token, itemLevel_(wiItem_('upload')));
