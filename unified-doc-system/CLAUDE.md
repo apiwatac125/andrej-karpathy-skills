@@ -127,6 +127,8 @@ LINE ไปก่อน — วางแผน 5 เฟส (README หัวข�
   `clasp clone` แล้วตรงกับ commit 0d6e724 (ที่ deploy @2) · WI ใช้ DriveApp / MailApp / Drive API (advanced
   service) = scope ใหม่ ผู้ใช้ต้องรัน `setup()` ใน editor อีกครั้งเพื่อกด Allow ไม่งั้นหน้า WI พังตอน runtime
   → ผู้ใช้รัน `setup()` แล้ว เปิดหน้า WI บนระบบจริงได้ (2026-10-29) · ยังไม่ได้ทดสอบอัปโหลด/ลงนาม/อีเมล
+- 2026-10-31: deploy @4 ("ทะเบียนเอกสาร: ออกรหัสอัตโนมัติ + ขึ้นทะเบียนเอกสารเดิม + Master List + หน้าที่ QMR/Auditor
+  + รหัสงาน") — ก่อน push `clasp clone` ตรงกับ commit a34860b (@3) · แท็บ Units ปรับเองครั้งแรกที่มีคนเปิดหน้า
 
 ## รูปแบบการทำงาน
 
