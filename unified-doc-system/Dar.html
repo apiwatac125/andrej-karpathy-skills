@@ -138,7 +138,7 @@
 
     html += '<div class="row">' +
       '<div class="field"><label for="d-code">เลขที่เอกสารเดิม</label>' +
-      '<div class="hint">เว้นว่างได้เฉพาะคำขอจัดทำเอกสารใหม่</div>' +
+      '<div class="hint">คำขอจัดทำเอกสารใหม่ไม่ต้องกรอก — ระบบออกเลขที่ให้ตอนส่งเอกสาร</div>' +
       '<input type="text" id="d-code" autocomplete="off" value="' + esc(seedCode) + '">' +
       '<div class="mini" id="d-codeinfo" style="margin-top:6px"></div></div>' +
       '<div class="field"><label for="d-unit">งาน / หน่วยงาน <span style="color:var(--danger)">*</span></label>' +
@@ -198,7 +198,7 @@
   function typeHint() {
     var v = document.getElementById('d-type').value;
     var hint = document.getElementById('d-typehint');
-    if (v === 'new') hint.textContent = 'เอกสารใหม่ที่ยังไม่เคยมีในคลัง';
+    if (v === 'new') hint.textContent = 'เอกสารใหม่ที่ยังไม่เคยมีในคลัง — ไม่ต้องกรอกเลขที่ ระบบออกให้ตอนส่งเอกสาร';
     else if (v === 'revise') hint.textContent = 'แก้ไขเอกสารเดิม — อนุมัติแล้วจึงอัปโหลดฉบับใหม่ได้';
     else hint.textContent = 'ยกเลิกถาวร ไม่มีฉบับใหม่มาแทน — อนุมัติแล้วเอกสารจะขึ้นสถานะ "ยกเลิกใช้" ทันที';
   }

@@ -151,7 +151,8 @@ function createDocRequest(payload) {
   if (!requester) throw new Error('กรุณากรอกชื่อผู้ขอ');
   if (requesterEmail.indexOf('@') === -1) throw new Error('กรุณากรอกอีเมลผู้ขอ (ใช้แจ้งผลกลับ)');
 
-  const docCode = String(p.docCode || '').trim().toUpperCase();
+  // เอกสารใหม่ยังไม่มีเลขที่ — ระบบออกรหัสให้ตอนส่งเอกสาร (DocRegistry.gs) จึงไม่รับเลขที่จากคำขอ
+  const docCode = typeDef.needsExisting ? String(p.docCode || '').trim().toUpperCase() : '';
   if (typeDef.needsExisting) {
     if (!docCode) throw new Error('คำขอประเภทนี้ต้องระบุเลขที่เอกสารเดิม');
     const rows = getDocsByCode_(docCode);

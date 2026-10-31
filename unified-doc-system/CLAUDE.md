@@ -45,11 +45,37 @@ Google Apps Script web app หน้าหลักของกลุ่มง�
   `postMessage({type:'wi-open', url})` ไปทุกชั้น ancestor · `Index.html` รับเฉพาะจากกรอบตัวเอง
   (ไล่ `.parent` หา `#frame`) และ URL ที่ขึ้นต้นด้วย `baseUrl`
 - `setup()` เรียก `runSetup()` ของ WI ต่อ · WI ใช้ Script Property `SHEET_ID` / หน้าหลักใช้ `DB_SHEET_ID`
-- **ค้างไว้ (Phase B):** ฟังก์ชัน server ของ WI ยังไม่ตรวจ session (เหมือน WI เดิม) · People/`enforce_roles`
-  ของ WI ยังแยกจาก `ROLES` ของหน้าหลัก · Upload ยังไม่เติมผู้ใช้ที่ login
+- **ค้างไว้ (Phase B):** ฟังก์ชัน server ของ WI ส่วนใหญ่ยังไม่ตรวจ session (เหมือน WI เดิม) — ยกเว้นหน้าส่งเอกสาร
+  และทะเบียนเอกสาร (ด้านล่าง) · People/`enforce_roles` ของ WI ยังแยกจาก `ROLES`/`DUTIES` ของหน้าหลัก
 - กฎ "9 ไฟล์ใช้ร่วมกับ `wi-doc-control-v1.1`" ใน `wi/CLAUDE.md` ไม่ตรงแล้ว (แก้ `Nav.html` + หน้า HTML ไปแล้ว)
 - ทดสอบด้วยสคริปต์ใน scratchpad ของ session (ไม่อยู่ใน repo): ตรวจชื่อชน/syntax/ฟังก์ชันที่หน้าเว็บเรียก
   ทั้งโปรเจกต์ · ตัวแยกเส้นทางบน `preview/mock.js` · หน้า WI ทั้ง 7 ในกรอบ/เปิดตรง (Playwright) · หน้าตัวอย่าง
+
+### ทะเบียนเอกสาร — ต่อยอด WI ตามตัวอย่างระบบที่ผู้ใช้ส่งมา (ทำ 2026-10-31)
+
+ผู้ใช้ส่งภาพระบบ "บริหารจัดการเอกสารคุณภาพทางห้องปฏิบัติการ" ของโรงพยาบาลอื่น (โพสต์ Facebook) ขอให้ทำตามโดยข้าม
+LINE ไปก่อน — วางแผน 5 เฟส (README หัวข้อทะเบียนเอกสาร) ทำ **เฟส 1** แล้ว คำตอบของผู้ใช้ที่ใช้ตัดสิน:
+- ยังไม่มี Master List เดิม (ไม่ต้องทำนำเข้า) · รหัส `XXX-XX-XX` = ชนิด-งาน-ลำดับในงาน · **ลำดับแยกตามชนิด**
+  (`SP-MB-01` แม้มี `WI-MB-08`) · เอกสารลูกใช้ 3 ส่วนเหมือนกัน (เลิกแบบ `ED-WIMB08-01` ของ WI เดิม)
+- เอกสารเดิมบนกระดาษ: **ขึ้นทะเบียนตรง** ไม่ต้องเซ็นในระบบซ้ำ · QMR/Auditor เป็น **หน้าที่** ไม่ใช่ระดับ
+- ยืนยันการอ่าน (เฟส 3): **เลือกผู้อ่านรายคน** · ยังไม่มีแบบฟอร์มทะเบียนสำเนา/บันทึกทำลายของจริง
+
+สิ่งที่ทำ (`DocRegistry.gs`, `MasterList.html` + แก้ Code.gs / Upload.html / Auth.gs / Index.html):
+- `DUTIES` (Config.gs) + คอลัมน์ `duties` ในชีต Users (`saveUser_` เติมหัวคอลัมน์ที่ขาดเอง) · `requireDuty_` /
+  `hasDuty_` (admin ผ่านทุกหน้าที่)
+- `wiDoGet_(e, embed, session)` → template ได้ `session` → `<body data-session>` → `WiNav.session` ·
+  หน้า sign จากอีเมลได้ session ว่าง
+- `unit_code` ในแท็บ Units · `nextDocCode_` นับจาก `doc_code` ทุกแถว (อ่านคอลัมน์เดียว) ·
+  `submitDocument(token, payload)` = wrapper ตรวจ session + `withDocLock_` แล้วเรียก `submitDocument_` (ตัวเดิม)
+  · `newDoc` → ออกรหัสใน lock · ไม่ใช่ `newDoc` แต่เลขไม่มีในระบบ → ปฏิเสธ · DAR ประเภท new ไม่เก็บ `doc_code` แล้ว
+- `registerExistingDocument` (QMR) → แถว "อนุมัติแล้ว" + `registered_by`/`registered_at` ไม่มีลายเซ็น/ใบปก ·
+  `regenerateCoverPdf` ปฏิเสธแถวนี้ · index เนื้อหานอก lock
+- `getMasterList` อ่านทีละคอลัมน์ (`readDocColumns_`) เพราะคอลัมน์ลายเซ็นใหญ่ · เมนู `wi-masterlist` ระดับ 1 ·
+  หัวกระดาษใช้ `appInfo_().org`
+- ทดสอบ (scratchpad): `test-registry.js` รัน .gs จริงทั้งโปรเจกต์บน mock + stub Drive/Mail/Lock (48 ข้อ) ·
+  `test-wi-pages.js` หน้า Upload/MasterList จริงบน google.script.run จำลอง (38 ข้อ)
+- **หลัง deploy ผู้ใช้ต้องใส่ `unit_code` ของทุกงานในแท็บ Units** (ไม่รู้รหัสงานจริง ยกเว้น MB = จุลชีววิทยา
+  จาก `WI-MB-08`) และติ๊กหน้าที่ QMR ให้คนที่ขึ้นทะเบียน — ไม่มี scope ใหม่ ไม่ต้องรัน setup ซ้ำ
 
 ## สถาปัตยกรรม / การตัดสินใจสำคัญ
 

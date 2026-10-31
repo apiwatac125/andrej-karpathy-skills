@@ -67,10 +67,10 @@ function routeWi_(p, e) {
   }
   if (allowed) {
     var embed = p.embed === '1';
-    var out = wiDoGet_(e, embed);
+    var out = wiDoGet_(e, embed, p.s);
     return embed ? out.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) : out;
   }
-  if (p.page === 'sign' || (p.id && p.token)) return wiDoGet_(e, false);
+  if (p.page === 'sign' || (p.id && p.token)) return wiDoGet_(e, false, '');
   return renderShell_(wiParams_(p));
 }
 
@@ -112,6 +112,7 @@ function getShell(token) {
     // ใช้ในหน้าจัดการผู้ใช้: ตัวเลือกระดับสิทธิ์ + ตารางว่าระดับไหนเปิดเมนูไหนได้
     shell.roles = ROLES;
     shell.adminLevel = ADMIN_LEVEL;
+    shell.duties = DUTIES;
     shell.access = allItems_().map(function (x) {
       return { group: x.group, label: x.item.label, minLevel: itemLevel_(x.item, levels) };
     });

@@ -16,6 +16,9 @@
 !DocRequest.gs
 !DocSearch.gs
 !AuditCapa.gs
+# ทะเบียนเอกสาร (เพิ่ม 2026-10-31)
+!DocRegistry.gs
+!MasterList.html
 !Home.html
 !Dar.html
 !Upload.html

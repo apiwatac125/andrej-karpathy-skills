@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Styles') ?>
+  <style>
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .filters .field { flex: 1 1 170px; margin-bottom: 0; }
+    .filters .field.grow { flex: 2 1 220px; }
+    .count { margin: 4px 0 10px; font-size: 16px; color: var(--gray); }
+    .scroll-x { overflow-x: auto; }
+    .ml { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff; }
+    .ml th, .ml td { border: 1px solid var(--border); padding: 6px 8px; vertical-align: top; text-align: left; }
+    .ml th { background: #eef3f8; font-weight: 600; text-align: center; font-size: 14px; }
+    .ml td.c { text-align: center; white-space: nowrap; }
+    .ml td.code { white-space: nowrap; font-weight: 600; }
+    .ml td.title { min-width: 200px; }
+    .ml tr.off td { color: var(--gray); }
+    .print-head { display: none; text-align: center; margin-bottom: 8px; }
+    .print-head .org { font-weight: 700; font-size: 15px; }
+    .print-head h2 { font-size: 17px; margin: 2px 0; }
+    .print-head .cond { font-size: 12px; }
+    @media print {
+      @page { size: A4; margin: 12mm 10mm; }
+      .print-head { display: block; }
+      .count { display: none; }
+      .ml { font-size: 11px; }
+      .ml th { font-size: 11px; background: #eef3f8; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .ml th, .ml td { padding: 3px 4px; }
+      .ml thead { display: table-header-group; }
+      .ml tr { page-break-inside: avoid; }
+      .ml a { color: inherit; text-decoration: none; }
+      .ml td.title { min-width: 0; width: 30%; }
+      .ml .mini { font-size: 9px; }
+      .scroll-x { overflow: visible; }
+    }
+  </style>
+</head>
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-session="<?= session ?>" data-page="masterlist">
+<div class="wrap wide">
+  <?!= include('Nav') ?>
+
+  <div class="no-print">
+    <h1>ทะเบียนเอกสารควบคุม (Master List)</h1>
+    <div class="sub">
+      เอกสารทุกรหัสที่ประกาศใช้แล้ว 1 แถวต่อ 1 รหัส แสดงฉบับปัจจุบัน — เลือกเงื่อนไขแล้วกดพิมพ์ (A4) หรือบันทึกเป็น PDF
+    </div>
+    <div class="card filters">
+      <div class="field"><label for="f-type">ประเภท</label><select id="f-type"></select></div>
+      <div class="field"><label for="f-unit">งาน</label><select id="f-unit"></select></div>
+      <div class="field">
+        <label for="f-status">สถานะ</label>
+        <select id="f-status">
+          <option value="active">ใช้งาน</option>
+          <option value="off">ยกเลิก</option>
+          <option value="all">ทั้งหมด</option>
+        </select>
+      </div>
+      <div class="field grow"><label for="f-text">ค้นรหัส / ชื่อเอกสาร</label><input type="text" id="f-text" autocomplete="off"></div>
+      <button type="button" id="btnPrint" disabled>พิมพ์ / บันทึก PDF</button>
+    </div>
+  </div>
+
+  <div class="print-head">
+    <div class="org" id="ph-org"></div>
+    <h2>ทะเบียนเอกสารควบคุม (Master List)</h2>
+    <div class="cond" id="ph-cond"></div>
+  </div>
+
+  <div id="msg" class="msg wait">กำลังโหลดทะเบียนเอกสาร...</div>
+  <div class="count" id="count"></div>
+  <div id="list"></div>
+</div>
+
+<script>
+  var SESSION = WiNav.session;
+  var DATA = null;
+
+  google.script.run.withSuccessHandler(onLoad).withFailureHandler(function (err) {
+    var m = document.getElementById('msg');
+    m.className = 'msg err';
+    m.textContent = 'โหลดทะเบียนไม่สำเร็จ: ' + err.message;
+  }).getMasterList(SESSION);
+
+  function onLoad(data) {
+    DATA = data;
+    document.getElementById('msg').style.display = 'none';
+    document.getElementById('ph-org').textContent = data.org;
+
+    var typeSel = document.getElementById('f-type');
+    typeSel.appendChild(new Option('ทุกประเภท', ''));
+    data.docTypes.forEach(function (t) { typeSel.appendChild(new Option(t.label, t.value)); });
+
+    // งานจากแท็บ Units + งานที่มีในเอกสารจริง (เผื่อชื่องานในแท็บ Units ถูกแก้ภายหลัง)
+    var units = data.units.slice();
+    data.docs.forEach(function (d) { if (units.indexOf(d.unit) === -1) units.push(d.unit); });
+    var unitSel = document.getElementById('f-unit');
+    unitSel.appendChild(new Option('ทุกงาน', ''));
+    units.forEach(function (u) { unitSel.appendChild(new Option(u, u)); });
+
+    ['f-type', 'f-unit', 'f-status'].forEach(function (id) { document.getElementById(id).addEventListener('change', draw); });
+    document.getElementById('f-text').addEventListener('input', draw);
+    var btn = document.getElementById('btnPrint');
+    btn.disabled = false;
+    btn.addEventListener('click', function () { window.print(); });
+    draw();
+  }
+
+  function draw() {
+    var type = document.getElementById('f-type').value;
+    var unit = document.getElementById('f-unit').value;
+    var status = document.getElementById('f-status').value;
+    var text = document.getElementById('f-text').value.trim().toLowerCase();
+    var docs = DATA.docs.filter(function (d) {
+      if (type && d.docType !== type) return false;
+      if (unit && d.unit !== unit) return false;
+      if (status === 'active' && !d.active) return false;
+      if (status === 'off' && d.active) return false;
+      if (text && (d.docCode + ' ' + d.title).toLowerCase().indexOf(text) === -1) return false;
+      return true;
+    });
+
+    var cond = [
+      type ? document.getElementById('f-type').selectedOptions[0].textContent : 'ทุกประเภท',
+      unit || 'ทุกงาน',
+      document.getElementById('f-status').selectedOptions[0].textContent
+    ];
+    if (text) cond.push('คำค้น "' + text + '"');
+    document.getElementById('ph-cond').textContent = cond.join(' · ') + ' · ' + docs.length + ' รายการ · พิมพ์เมื่อ ' + DATA.printedAt;
+    document.getElementById('count').textContent = docs.length + ' รายการ' +
+      (docs.length === DATA.docs.length ? '' : ' (จากทั้งหมด ' + DATA.docs.length + ')');
+
+    var list = document.getElementById('list');
+    if (!DATA.docs.length) {
+      list.innerHTML = '<div class="card">ยังไม่มีเอกสารในทะเบียน — เอกสารขึ้นทะเบียนเมื่ออนุมัติครบ 3 ขั้น ' +
+        'หรือเมื่อ QMR ขึ้นทะเบียนเอกสารเดิมที่หน้า "ส่งเอกสารที่แก้พร้อมลงนาม"</div>';
+      return;
+    }
+    if (!docs.length) {
+      list.innerHTML = '<div class="card">ไม่มีเอกสารตามเงื่อนไขที่เลือก</div>';
+      return;
+    }
+    var html = '<div class="scroll-x"><table class="ml"><thead><tr>' +
+      '<th>ลำดับ</th><th>รหัสเอกสาร</th><th>ชื่อเอกสาร</th><th>ประเภท</th><th>ฉบับที่</th>' +
+      '<th>แก้ไขครั้งที่</th><th>วันที่ประกาศใช้</th><th>ครบกำหนดทบทวน</th><th>งาน</th><th>สถานะ</th>' +
+      '</tr></thead><tbody>';
+    docs.forEach(function (d, i) {
+      var code = d.fileUrl
+        ? '<a href="' + esc(d.fileUrl) + '" target="_blank">' + esc(d.docCode) + '</a>'
+        : esc(d.docCode);
+      html += '<tr' + (d.active ? '' : ' class="off"') + '>' +
+        '<td class="c">' + (i + 1) + '</td>' +
+        '<td class="code mono">' + code + '</td>' +
+        '<td class="title">' + esc(d.title) + '</td>' +
+        '<td class="c">' + esc(d.docType) + '</td>' +
+        '<td class="c">' + esc(d.edition) + '</td>' +
+        '<td class="c">' + d.amendment + '</td>' +
+        '<td class="c">' + esc(d.effectiveDate || '-') + '</td>' +
+        '<td class="c">' + esc(d.nextReviewDate || '-') + '</td>' +
+        '<td>' + esc(d.unit) + '</td>' +
+        '<td class="c">' + (d.active ? 'ใช้งาน' : 'ยกเลิก') +
+        (d.pending ? '<div class="mini">มีฉบับใหม่รออนุมัติ</div>' : '') + '</td>' +
+        '</tr>';
+    });
+    list.innerHTML = html + '</tbody></table></div>';
+  }
+
+  function esc(s) {
+    return String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+  }
+</script>
+</body>
+</html>

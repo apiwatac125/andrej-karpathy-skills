@@ -51,7 +51,8 @@
         go(a.href);
       }, true);
     }
-    return { go: go };
+    // session ของระบบงานเอกสาร (<body data-session>) — ส่งให้ฟังก์ชัน server ที่ต้องรู้ตัวผู้ใช้
+    return { go: go, session: document.body.getAttribute('data-session') || '' };
   })();
 </script>
 

@@ -6,7 +6,7 @@
  *   ระดับสิทธิ์อ่านจากชีตใหม่ทุกครั้ง — เปลี่ยนสิทธิ์หรือปิดบัญชีแล้วมีผลทันที
  */
 
-var USER_HEADERS = ['username', 'name', 'email', 'unit', 'role', 'active', 'salt', 'hash', 'updatedAt'];
+var USER_HEADERS = ['username', 'name', 'email', 'unit', 'role', 'duties', 'active', 'salt', 'hash', 'updatedAt'];
 var SESSION_SECONDS = 6 * 60 * 60;
 // หน้าเว็บดูคำว่า "เข้าสู่ระบบใหม่" ในข้อความนี้เพื่อพากลับหน้า login — แก้ข้อความต้องคงคำนี้ไว้
 var SESSION_EXPIRED = 'หมดเวลาใช้งาน กรุณาเข้าสู่ระบบใหม่';
@@ -103,6 +103,10 @@ function adminSaveUser(token, data) {
     throw new Error('ลดระดับสิทธิ์หรือปิดบัญชีของตัวเองไม่ได้ เพื่อไม่ให้ระบบเหลือแต่ผู้ใช้ที่จัดการสิทธิ์ไม่ได้');
   }
   if (data.password) checkPassword_(data.password);
+  var duties = (data.duties || []).map(String);
+  duties.forEach(function (d) {
+    if (!dutyOf_(d)) throw new Error('ไม่รู้จักหน้าที่ "' + d + '"');
+  });
 
   saveUser_({
     username: username,
@@ -110,6 +114,7 @@ function adminSaveUser(token, data) {
     email: String(data.email || '').trim(),
     unit: String(data.unit || '').trim(),
     role: data.role,
+    duties: duties.join(','),
     active: active,
     password: data.password || ''
   });
@@ -132,6 +137,26 @@ function requireLevel_(token, level) {
   return u;
 }
 
+/** ผู้ใช้เจ้าของ token ที่มีหน้าที่นี้ (หรือเป็นผู้ดูแลระบบ) */
+function requireDuty_(token, key) {
+  var u = session_(token);
+  if (!hasDuty_(u, key)) throw new Error('เฉพาะผู้ที่มีหน้าที่ ' + dutyOf_(key).label + ' หรือผู้ดูแลระบบ');
+  return u;
+}
+
+function hasDuty_(u, key) {
+  return roleOf_(u.role).level >= ADMIN_LEVEL || dutiesOf_(u).indexOf(key) > -1;
+}
+
+/** หน้าที่ของผู้ใช้ เก็บในชีตเป็น "qmr,auditor" — ตัดค่าที่ไม่รู้จักทิ้ง */
+function dutiesOf_(u) {
+  return String(u.duties || '').split(',').map(function (s) { return s.trim(); }).filter(dutyOf_);
+}
+
+function dutyOf_(key) {
+  return DUTIES.filter(function (d) { return d.key === key; })[0] || null;
+}
+
 function roleOf_(key) {
   for (var i = 0; i < ROLES.length; i++) {
     if (ROLES[i].key === key) return ROLES[i];
@@ -144,7 +169,8 @@ function publicUser_(u) {
   var r = roleOf_(u.role);
   return {
     username: u.username, name: u.name, email: u.email, unit: u.unit,
-    role: r.key, roleLabel: r.label, level: r.level, active: isActive_(u)
+    role: r.key, roleLabel: r.label, level: r.level, active: isActive_(u),
+    duties: dutiesOf_(u), dutyLabels: dutiesOf_(u).map(function (d) { return dutyOf_(d).short; })
   };
 }
 
@@ -188,8 +214,14 @@ function findUser_(username) {
 function saveUser_(f) {
   var sh = usersSheet_();
   var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  // ชีตที่สร้างก่อนมีคอลัมน์ใหม่ (เช่น duties) — เติมหัวคอลัมน์ที่ขาดต่อท้าย
+  USER_HEADERS.forEach(function (h) {
+    if (head.indexOf(h) > -1) return;
+    sh.getRange(1, head.length + 1).setValue(h);
+    head.push(h);
+  });
   var u = findUser_(f.username) || { username: normName_(f.username) };
-  ['name', 'email', 'unit', 'role', 'active'].forEach(function (k) {
+  ['name', 'email', 'unit', 'role', 'duties', 'active'].forEach(function (k) {
     if (f[k] !== undefined) u[k] = f[k];
   });
   if (f.password) {

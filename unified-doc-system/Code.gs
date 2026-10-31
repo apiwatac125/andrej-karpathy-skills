@@ -108,14 +108,16 @@ const DEFAULT_UNITS = [
  * หน้าของระบบ WI — doGet ตัวจริงอยู่ใน Shell.gs (ระบบงานเอกสาร) ซึ่งตรวจ login แล้วจึงเรียกมาที่นี่
  * embed = true เมื่อเปิดในกรอบเนื้อหาของหน้าหลัก: หน้าเว็บได้ <body data-embed="1"> แล้ว Nav.html
  * ซ่อนเมนู/ช่องค้นของ WI และส่งลิงก์ไปหน้าอื่นให้หน้าหลักเปิดในกรอบเดิม
+ * session = token ของผู้ใช้ที่ login แล้ว (ว่าง = เปิดจากลิงก์อีเมลที่มี token ของเอกสาร)
+ * หน้าเว็บส่งต่อให้ฟังก์ชันที่ต้องรู้ตัวผู้ใช้ (DocRegistry.gs)
  */
-function wiDoGet_(e, embed) {
+function wiDoGet_(e, embed, session) {
   const page = e && e.parameter && e.parameter.page;
 
   // หน้าที่มีลิงก์ข้ามหน้าต้อง render ผ่าน template เพื่อฝัง URL เต็มของ web app
   // (HtmlService เสิร์ฟในกรอบ iframe บน googleusercontent.com — ลิงก์ "?page=x" แบบ relative วิ่งผิดโดเมน)
   if (page === 'dar') {
-    const darTpl = wiTemplate_('Dar', embed);
+    const darTpl = wiTemplate_('Dar', embed, session);
     darTpl.baseUrl = ScriptApp.getService().getUrl();
     darTpl.darId = (e.parameter.id || '');
     darTpl.token = (e.parameter.token || '');
@@ -126,7 +128,7 @@ function wiDoGet_(e, embed) {
   }
 
   if (page === 'upload') {
-    const upTpl = wiTemplate_('Upload', embed);
+    const upTpl = wiTemplate_('Upload', embed, session);
     upTpl.baseUrl = ScriptApp.getService().getUrl();
     upTpl.darId = (e.parameter.dar || ''); // อัปโหลดตามใบขออนุมัติที่ผ่านแล้ว
     return upTpl.evaluate()
@@ -135,7 +137,7 @@ function wiDoGet_(e, embed) {
   }
 
   if (page === 'audit') {
-    const auTpl = wiTemplate_('Audit', embed);
+    const auTpl = wiTemplate_('Audit', embed, session);
     auTpl.baseUrl = ScriptApp.getService().getUrl();
     auTpl.auditId = (e.parameter.id || '');
     auTpl.token = (e.parameter.token || '');
@@ -145,7 +147,7 @@ function wiDoGet_(e, embed) {
   }
 
   if (page === 'capa') {
-    const caTpl = wiTemplate_('Capa', embed);
+    const caTpl = wiTemplate_('Capa', embed, session);
     caTpl.baseUrl = ScriptApp.getService().getUrl();
     caTpl.capaId = (e.parameter.id || '');
     caTpl.token = (e.parameter.token || '');
@@ -156,7 +158,7 @@ function wiDoGet_(e, embed) {
   }
 
   if (page === 'sign') {
-    const signTpl = wiTemplate_('Sign', embed);
+    const signTpl = wiTemplate_('Sign', embed, session);
     signTpl.docId = (e.parameter.id || '');
     signTpl.token = (e.parameter.token || '');
     signTpl.baseUrl = ScriptApp.getService().getUrl();
@@ -165,8 +167,16 @@ function wiDoGet_(e, embed) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
+  if (page === 'masterlist') {
+    const mlTpl = wiTemplate_('MasterList', embed, session);
+    mlTpl.baseUrl = ScriptApp.getService().getUrl();
+    return mlTpl.evaluate()
+      .setTitle('ทะเบียนเอกสารควบคุม (Master List)')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
+
   if (page === 'archive') {
-    const arcTpl = wiTemplate_('Archive', embed);
+    const arcTpl = wiTemplate_('Archive', embed, session);
     arcTpl.baseUrl = ScriptApp.getService().getUrl();
     return arcTpl.evaluate()
       .setTitle('คลังเอกสารคุณภาพ')
@@ -174,16 +184,17 @@ function wiDoGet_(e, embed) {
   }
 
   // ค่าตั้งต้น v2.0 = หน้ารวม (เอกสาร + Audit + CAPA) ส่วนหน้าส่งเอกสารย้ายไป ?page=upload
-  const tpl = wiTemplate_('Home', embed);
+  const tpl = wiTemplate_('Home', embed, session);
   tpl.baseUrl = ScriptApp.getService().getUrl();
   return tpl.evaluate()
     .setTitle('ระบบคุณภาพห้องปฏิบัติการ')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-function wiTemplate_(name, embed) {
+function wiTemplate_(name, embed, session) {
   const tpl = HtmlService.createTemplateFromFile(name);
   tpl.embed = !!embed;
+  tpl.session = session || '';
   return tpl;
 }
 
@@ -218,10 +229,13 @@ const DOC_COLUMNS = [
   'author_email', 'author_name', 'author_at', 'author_signature',
   'reviewer_email', 'reviewer_name', 'reviewer_at', 'reviewer_signature', 'reviewer_comment',
   'approver_email', 'approver_name', 'approved_at', 'approver_signature', 'approver_comment',
-  'status', 'cover_pdf_id', 'cover_pdf_url', 'token'
+  'status', 'cover_pdf_id', 'cover_pdf_url', 'token',
+  // ขึ้นทะเบียนเอกสารที่ประกาศใช้แล้วบนกระดาษ (DocRegistry.gs) — ว่าง = ผ่านการลงนามในระบบ
+  'registered_by', 'registered_at'
 ];
 
-const UNIT_COLUMNS = ['unit', 'reviewer_email', 'reviewer_title', 'approver_email', 'approver_title'];
+// unit_code = รหัสงานในเลขที่เอกสาร (MB ใน WI-MB-08) ใช้ออกรหัสอัตโนมัติ — DocRegistry.gs
+const UNIT_COLUMNS = ['unit', 'unit_code', 'reviewer_email', 'reviewer_title', 'approver_email', 'approver_title'];
 
 /** เติมคอลัมน์ให้ครบแบบ lazy (เรียกจาก submitDocument เผื่อชีทเก่ายังไม่มีคอลัมน์ใหม่) */
 function ensureColumns_(sheetName, columns) {
@@ -287,7 +301,7 @@ function runSetup() {
   // รายชื่องานตั้งต้น (แก้/เพิ่มได้ในแท็บ Units — อีเมลต่องานจะ override ค่าใน Config)
   const unitSh = ss.getSheetByName(SHEET_NAMES.UNITS);
   if (unitSh.getLastRow() <= 1) {
-    DEFAULT_UNITS.forEach(function (u) { unitSh.appendRow([u, '', '', '', '']); });
+    DEFAULT_UNITS.forEach(function (u) { unitSh.appendRow([u, '', '', '', '', '']); });
   }
 
   ensureDarSetup_();   // v2.1 — แท็บ DocRequests (DocRequest.gs)
@@ -328,6 +342,7 @@ function getUnitMap_() {
     if (!unit) continue;
     map[unit] = {
       unit: unit,
+      unitCode: String(data[i][col('unit_code')] || '').trim().toUpperCase(),
       reviewerEmail: String(data[i][col('reviewer_email')] || '').trim(),
       reviewerTitle: String(data[i][col('reviewer_title')] || '').trim(),
       approverEmail: String(data[i][col('approver_email')] || '').trim(),
@@ -489,14 +504,18 @@ function getDocsByCode_(docCode) {
 // 4. CLIENT API — หน้าส่งเอกสาร
 // ============================================================
 
-function getUploadInit() {
+function getUploadInit(token) {
+  const user = requireLevel_(token, itemLevel_(wiItem_('upload')));
+  ensureColumns_(SHEET_NAMES.UNITS, UNIT_COLUMNS);   // ชีตที่สร้างก่อนมี unit_code
   const units = Object.keys(getUnitMap_()).sort(function (a, b) { return a.localeCompare(b, 'th'); });
   return {
     units: units.length ? units : DEFAULT_UNITS,
+    userName: String(user.name || ''),
+    canRegister: hasDuty_(user, 'qmr'),   // ขึ้นทะเบียนเอกสารเดิมได้ (DocRegistry.gs)
     docTypes: DOC_TYPES,
     changeKinds: CHANGE_KINDS,
     controlTypes: CONTROL_TYPES,
-    userEmail: Session.getActiveUser().getEmail() || '',
+    userEmail: String(user.email || '') || Session.getActiveUser().getEmail() || '',
     defaultReviewCycle: Number(getConfigValue_('default_review_cycle_months', 24)) || 24,
     maxFileMB: MAX_FILE_MB
   };
@@ -536,10 +555,28 @@ function lookupDocCode(docCode) {
 
 /**
  * ผู้จัดทำส่งเอกสาร: อัปโหลดไฟล์ + กรอกข้อมูลควบคุมเอกสาร + เซ็นชื่อตัวเอง
- * payload: { docCode, docTitle, docType, unit, effectiveDate, reviewCycleMonths,
+ * payload: { newDoc, docCode, docTitle, docType, unit, effectiveDate, reviewCycleMonths,
  *            changeNote, authorName, authorSignature, file: { name, mime, dataBase64 } }
+ * newDoc = เอกสารใหม่ → ระบบออกรหัสให้ (ไม่ใช้ docCode ที่ส่งมา) · ไม่ใช่ = ต้องเป็นเลขที่มีในระบบแล้ว
  */
-function submitDocument(payload) {
+function submitDocument(token, payload) {
+  requireLevel_(token, itemLevel_(wiItem_('upload')));
+  const p = Object.assign({}, payload || {});
+  const result = withDocLock_(function () {
+    // ออกรหัสตอนส่งจริงภายใต้ lock — เลขที่หน้าเว็บแสดงเป็นแค่ตัวอย่าง กันสองคนได้เลขเดียวกัน
+    if (p.newDoc) {
+      p.docCode = nextDocCode_(String(p.docType || '').trim(), String(p.unit || '').trim());
+    } else if (!getDocsByCode_(p.docCode).length) {
+      throw new Error('ไม่พบเลขที่เอกสาร ' + String(p.docCode || '').trim().toUpperCase() + ' ในระบบ — ' +
+        'เอกสารใหม่ให้เลือก "เอกสารใหม่" ระบบจะออกเลขให้ · เอกสารเดิมที่ใช้อยู่บนกระดาษให้ QMR ขึ้นทะเบียนก่อน');
+    }
+    return submitDocument_(p);
+  });
+  result.docCode = String(p.docCode).trim().toUpperCase();
+  return result;
+}
+
+function submitDocument_(payload) {
   const p = payload || {};
   const docCode = String(p.docCode || '').trim().toUpperCase();
   const docTitle = String(p.docTitle || '').trim();
@@ -1101,6 +1138,9 @@ function regenerateCoverPdf(docId) {
   if (String(row.get('status')) !== STATUS.APPROVED) {
     throw new Error('สร้างใบปกได้เฉพาะเอกสารที่อนุมัติแล้ว');
   }
+  if (row.get('registered_at')) {
+    throw new Error('เอกสารนี้ขึ้นทะเบียนจากฉบับกระดาษ ลายมือชื่ออยู่บนต้นฉบับกระดาษ จึงไม่มีใบปกในระบบ');
+  }
   const signers = resolveSigners_(row.get('unit'));
   const cover = saveCoverPdf_({
     docCode: row.get('doc_code'), docTitle: row.get('doc_title'),
@@ -1182,6 +1222,7 @@ function getArchiveData() {
         changeNote: String(data[i][col('change_note')] || ''),
         fileUrl: String(data[i][col('file_url')] || ''),
         coverPdfUrl: String(data[i][col('cover_pdf_url')] || ''),
+        registered: !!data[i][col('registered_at')],   // ขึ้นทะเบียนจากฉบับกระดาษ ไม่มีใบปกในระบบ
         updatedAt: formatThaiDate_(data[i][col('approved_at')] || data[i][col('timestamp')])
       };
       bucket[code].revisions.push(rev);

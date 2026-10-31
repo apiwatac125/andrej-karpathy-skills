@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <?!= include('Styles') ?>
 </head>
-<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-page="upload" data-dar="<?= darId ?>">
+<body data-base="<?= baseUrl ?>" data-embed="<?= embed ? '1' : '' ?>" data-session="<?= session ?>" data-page="upload" data-dar="<?= darId ?>">
 <div class="wrap">
   <?!= include('Nav') ?>
 
@@ -13,6 +13,7 @@
   <div class="sub">
     แนบไฟล์เอกสาร (WI / SP / ED / LB) กรอกข้อมูลควบคุมเอกสาร แล้วเซ็นในฐานะผู้จัดทำ
     ระบบจะส่งอีเมลให้ผู้ทบทวนและผู้อนุมัติลงนามต่อตามลำดับ
+    · เอกสารใหม่ได้เลขที่ <span class="mono">ชนิด-งาน-ลำดับ</span> อัตโนมัติ
   </div>
 
   <div id="darBanner"></div>
@@ -21,17 +22,25 @@
   <form id="docForm" style="display:none">
     <div class="card">
       <h3>1. ข้อมูลควบคุมเอกสาร</h3>
+      <div class="field">
+        <label>เอกสารนี้เป็น</label>
+        <label class="choice"><input type="radio" name="mode" value="new" checked> เอกสารใหม่ — ระบบออกเลขที่ให้</label>
+        <label class="choice"><input type="radio" name="mode" value="existing"> แก้ไข / ทบทวนเอกสารที่มีในระบบแล้ว</label>
+        <label class="choice" id="modeRegister" style="display:none"><input type="radio" name="mode" value="register">
+          <span>ขึ้นทะเบียนเอกสารเดิมที่ประกาศใช้แล้วบนกระดาษ (QMR)
+          <span class="mini" style="display:block">บันทึกเป็นเอกสารใช้งานทันที ไม่ต้องลงนามในระบบ — ลายมือชื่ออยู่บนต้นฉบับกระดาษ</span></span></label>
+      </div>
       <div class="row">
         <div class="field" style="flex:1 1 260px">
           <label for="docCode">เลขที่เอกสาร <span style="color:var(--danger)">*</span></label>
-          <div class="hint">เช่น WI-MB-08 — ถ้าเลขนี้มีอยู่แล้วระบบจะถือเป็นการเปลี่ยนแปลงเอกสารเดิม</div>
-          <input type="text" id="docCode" required autocomplete="off">
+          <div class="hint" id="codeHint"></div>
+          <input type="text" id="docCode" class="mono" required autocomplete="off">
           <div id="codeInfo" class="mini" style="margin-top:6px"></div>
         </div>
       </div>
 
       <div class="row">
-        <div class="field" style="flex:1 1 260px">
+        <div class="field" style="flex:1 1 260px" id="kindField">
           <label for="changeKind">ลักษณะการเปลี่ยนแปลง <span style="color:var(--danger)">*</span></label>
           <div class="hint">ตรงกับตาราง "บันทึกประวัติการใช้งาน การทบทวน และ การแก้ไขเอกสาร" ในตัวเอกสาร</div>
           <select id="changeKind"></select>
@@ -71,8 +80,8 @@
 
       <div class="row">
         <div class="field">
-          <label for="effectiveDate">วันที่ประกาศใช้</label>
-          <div class="hint">เว้นว่างได้ — ระบบจะใช้วันที่อนุมัติ</div>
+          <label for="effectiveDate">วันที่ประกาศใช้ <span style="color:var(--danger);display:none" id="effReq">*</span></label>
+          <div class="hint" id="effHint">เว้นว่างได้ — ระบบจะใช้วันที่อนุมัติ</div>
           <input type="date" id="effectiveDate">
         </div>
         <div class="field">
@@ -119,7 +128,14 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="registerCard" style="display:none">
+      <h3>3. ขึ้นทะเบียน</h3>
+      <div class="mini" id="registerWho" style="margin-bottom:12px"></div>
+      <button type="button" id="registerBtn">ขึ้นทะเบียนเอกสาร</button>
+      <div id="registerMsg" class="msg"></div>
+    </div>
+
+    <div class="card" id="signCard">
       <h3>3. ลงนามผู้จัดทำ</h3>
       <div class="row">
         <div class="field" style="flex:1 1 280px">
@@ -158,8 +174,10 @@
   var INIT = null;
   var DAR = null;
   var selectedFile = null;
+  var SESSION = WiNav.session;   // ผู้ใช้ที่ login ระบบงานเอกสาร — server ตรวจสิทธิ์จาก token นี้
+  var MODE = 'new';              // new = เอกสารใหม่ (ออกเลขให้) · existing = เลขที่มีในระบบ · register = ขึ้นทะเบียนฉบับกระดาษ
 
-  google.script.run.withSuccessHandler(onInit).withFailureHandler(onInitFail).getUploadInit();
+  google.script.run.withSuccessHandler(onInit).withFailureHandler(onInitFail).getUploadInit(SESSION);
 
   function onInitFail(err) {
     document.getElementById('loading').className = 'msg err';
@@ -196,16 +214,80 @@
     document.getElementById('reviewCycle').value = init.defaultReviewCycle;
     document.getElementById('fileHint').textContent =
       'PDF / Word / Excel / PowerPoint / รูปภาพ — ไม่เกิน ' + init.maxFileMB + ' MB';
+    if (init.userName) document.getElementById('authorName').value = init.userName;
     if (init.userEmail) {
       document.getElementById('authorEmail').value = init.userEmail;
-      document.getElementById('authorEmailNote').textContent = 'ตรวจพบบัญชีที่ลงชื่อเข้าใช้อยู่';
+      document.getElementById('authorEmailNote').textContent = 'จากบัญชีที่เข้าสู่ระบบอยู่';
     }
+
+    if (init.canRegister) document.getElementById('modeRegister').style.display = '';
+    var radios = document.querySelectorAll('input[name="mode"]');
+    for (var i = 0; i < radios.length; i++) radios[i].addEventListener('change', function () { setMode(this.value); });
+    typeSel.addEventListener('change', refreshNextCode);
+    unitSel.addEventListener('change', refreshNextCode);
+    document.getElementById('registerWho').textContent = 'ผู้ขึ้นทะเบียน: ' + (init.userName || '-') +
+      ' — ระบบบันทึกชื่อและเวลาไว้ในทะเบียนเอกสาร';
+    document.getElementById('registerBtn').addEventListener('click', doRegister);
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('docForm').style.display = 'block';
     sig = WiSig.mount('sigHost');
+    setMode('new');
 
     if (DAR_ID) loadDar();
+  }
+
+  var CODE_HINTS = {
+    'new': 'เลือกประเภทเอกสารและงานด้านล่าง ระบบจะออกเลขที่ถัดไปให้ (ยืนยันเลขจริงตอนส่ง)',
+    existing: 'เช่น WI-MB-08 — เลขที่มีในระบบแล้ว ระบบจะแสดงฉบับปัจจุบันและเติมฉบับถัดไปให้',
+    register: 'เลขที่ตามที่พิมพ์บนเอกสาร 3 ส่วน เช่น WI-MB-08 (ต้องยังไม่มีในระบบ)'
+  };
+
+  /** สลับแบบของเอกสาร — ช่องที่ใช้ต่างกันตามแบบ */
+  function setMode(m) {
+    MODE = m;
+    var radios = document.querySelectorAll('input[name="mode"]');
+    for (var i = 0; i < radios.length; i++) radios[i].checked = (radios[i].value === m);
+    var code = document.getElementById('docCode');
+    code.readOnly = (m === 'new');
+    code.value = '';
+    LOOKUP = null;
+    document.getElementById('codeInfo').textContent = '';
+    document.getElementById('codeHint').textContent = CODE_HINTS[m];
+    document.getElementById('kindField').style.display = (m === 'register') ? 'none' : '';
+    document.getElementById('changeKind').disabled = (m === 'new');
+    document.getElementById('effReq').style.display = (m === 'register') ? '' : 'none';
+    document.getElementById('effHint').textContent = (m === 'register')
+      ? 'ตามที่พิมพ์บนเอกสาร — ใช้คำนวณกำหนดทบทวนครั้งถัดไป'
+      : 'เว้นว่างได้ — ระบบจะใช้วันที่อนุมัติ';
+    document.getElementById('signCard').style.display = (m === 'register') ? 'none' : '';
+    document.getElementById('registerCard').style.display = (m === 'register') ? '' : 'none';
+    setKind(m === 'existing' ? 'amend' : 'new');
+    document.getElementById('edition').value = '1';
+    document.getElementById('amendment').value = 0;
+    document.getElementById('amendment').readOnly = false;
+    drawEditionPreview();
+    if (m === 'new') refreshNextCode();
+  }
+
+  /** เอกสารใหม่: แสดงเลขที่ถัดไปของประเภท + งานที่เลือก */
+  function refreshNextCode() {
+    if (MODE !== 'new') return;
+    var type = document.getElementById('docType').value;
+    var unit = document.getElementById('unit').value;
+    var code = document.getElementById('docCode');
+    var info = document.getElementById('codeInfo');
+    code.value = '';
+    if (!type || !unit) { info.textContent = 'เลือกประเภทและงานก่อน'; return; }
+    info.textContent = 'กำลังหาเลขที่ถัดไป...';
+    google.script.run.withSuccessHandler(function (next) {
+      if (MODE !== 'new') return;
+      code.value = next;
+      info.innerHTML = '<span style="color:var(--ok)">เลขที่ถัดไปของ ' + escapeHtml(type) + ' ' + escapeHtml(unit) +
+        '</span> — ถ้ามีคนส่งเอกสารชุดเดียวกันพร้อมกัน ระบบจะออกเลขถัดไปให้แทน';
+    }).withFailureHandler(function (err) {
+      info.innerHTML = '<span style="color:var(--danger)">' + escapeHtml(err.message) + '</span>';
+    }).getNextDocCode(SESSION, type, unit);
   }
 
   /** เปิดจากลิงก์ในใบขออนุมัติ — เติมข้อมูลจากคำขอแล้วล็อกช่องที่คำขอกำหนดไว้ */
@@ -219,6 +301,10 @@
         '">ดูใบคำขอ</a><div class="mini" style="margin-top:4px">เลขที่เอกสาร ประเภท และหน่วยงาน ' +
         'ถูกล็อกตามคำขอ แก้ไขไม่ได้</div></div>';
 
+      // คำขอแก้ไขมีเลขที่เดิม · คำขอจัดทำใหม่ไม่มี (ระบบออกเลขให้)
+      setMode(d.docCode ? 'existing' : 'new');
+      var radios = document.querySelectorAll('input[name="mode"]');
+      for (var i = 0; i < radios.length; i++) radios[i].disabled = true;
       if (d.docCode) {
         document.getElementById('docCode').value = d.docCode;
         document.getElementById('docCode').readOnly = true;
@@ -226,6 +312,7 @@
       if (d.docTitle) document.getElementById('docTitle').value = d.docTitle;
       if (d.docType) document.getElementById('docType').value = d.docType;
       if (d.unit) document.getElementById('unit').value = d.unit;
+      refreshNextCode();
       document.getElementById('docType').disabled = true;
       document.getElementById('unit').disabled = true;
       if (d.reason && !document.getElementById('changeNote').value) {
@@ -245,18 +332,23 @@
   var LOOKUP = null;   // ผลตรวจเลขเอกสารล่าสุด ใช้เติมค่าตามลักษณะการเปลี่ยนแปลง
 
   document.getElementById('docCode').addEventListener('blur', function () {
+    if (MODE === 'new') return;   // เลขที่ระบบออกให้ ไม่ต้องตรวจ
     var code = this.value.trim();
     var info = document.getElementById('codeInfo');
     if (!code) { info.textContent = ''; LOOKUP = null; return; }
     info.textContent = 'กำลังตรวจเลขเอกสาร...';
     google.script.run.withSuccessHandler(function (res) {
       LOOKUP = res;
+      if (MODE === 'register') {
+        info.innerHTML = res.exists
+          ? '<span style="color:var(--danger)">มีในระบบแล้ว — ขึ้นทะเบียนซ้ำไม่ได้ ถ้าจะแก้ไข/ทบทวนให้เลือก "แก้ไข / ทบทวนเอกสารที่มีในระบบแล้ว"</span>'
+          : '<span style="color:var(--ok)">ยังไม่มีในระบบ — ขึ้นทะเบียนได้</span>';
+        return;
+      }
       if (!res.exists) {
-        info.innerHTML = '<span style="color:var(--ok)">เลขใหม่ — จะบันทึกเป็นฉบับแรก</span>';
-        setKind('new');
-        document.getElementById('edition').value = '1';
-        document.getElementById('amendment').value = 0;
-        drawEditionPreview();
+        info.innerHTML = '<span style="color:var(--danger)">ไม่พบเลขนี้ในระบบ — เอกสารใหม่ให้เลือก "เอกสารใหม่"' +
+          (INIT.canRegister ? ' · เอกสารเดิมบนกระดาษให้เลือก "ขึ้นทะเบียนเอกสารเดิม"' : ' · เอกสารเดิมบนกระดาษให้ QMR ขึ้นทะเบียนก่อน') +
+          '</span>';
         return;
       }
       if (res.pending) {
@@ -338,8 +430,13 @@
   // ---------- ส่ง ----------
   document.getElementById('docForm').addEventListener('submit', function (ev) {
     ev.preventDefault();
+    if (MODE === 'register') return;   // ขึ้นทะเบียนใช้ปุ่มของตัวเอง (doRegister)
     if (!selectedFile) { alert('กรุณาแนบไฟล์เอกสาร'); return; }
     if (!document.getElementById('unit').value) { alert('กรุณาเลือกงาน/หน่วยงาน'); return; }
+    if (MODE === 'new' && !document.getElementById('docCode').value) {
+      alert('ยังออกเลขที่ให้ไม่ได้ — ' + document.getElementById('codeInfo').textContent);
+      return;
+    }
     if (!sig.isSigned()) { alert('กรุณาเซ็นลายเซ็นผู้จัดทำหรือแนบรูปลายเซ็นก่อน'); return; }
     var signature = sig.dataUrl();
     if (signature.length >= 50000) {
@@ -356,7 +453,8 @@
           setBusy(false, '');
           setStatus('ส่งไม่สำเร็จ: ' + err.message, 'err');
         })
-        .submitDocument({
+        .submitDocument(SESSION, {
+          newDoc: MODE === 'new',
           darId: DAR_ID,
           docCode: document.getElementById('docCode').value,
           changeKind: document.getElementById('changeKind').value,
@@ -382,11 +480,62 @@
     });
   });
 
+  /** ขึ้นทะเบียนเอกสารเดิม (QMR) — ไม่มีลายเซ็น บันทึกเป็นเอกสารใช้งานทันที */
+  function doRegister() {
+    var msg = document.getElementById('registerMsg');
+    var btn = document.getElementById('registerBtn');
+    if (!document.getElementById('docCode').value.trim()) { alert('กรุณากรอกเลขที่เอกสาร'); return; }
+    if (!document.getElementById('docTitle').value.trim()) { alert('กรุณากรอกชื่อเอกสาร'); return; }
+    if (!document.getElementById('unit').value) { alert('กรุณาเลือกงาน/หน่วยงาน'); return; }
+    if (!document.getElementById('effectiveDate').value) { alert('กรุณาระบุวันที่ประกาศใช้'); return; }
+    if (!selectedFile) { alert('กรุณาแนบไฟล์เอกสาร'); return; }
+    btn.disabled = true;
+    msg.className = 'msg wait';
+    msg.textContent = 'กำลังอ่านไฟล์...';
+    readFileBase64(selectedFile, function (filePayload) {
+      msg.textContent = 'กำลังอัปโหลดและขึ้นทะเบียน...';
+      google.script.run.withSuccessHandler(function (res) {
+        document.getElementById('docForm').style.display = 'none';
+        document.getElementById('doneBody').innerHTML =
+          '<table class="meta-table">' +
+          '<tr><th>เลขที่เอกสาร</th><td>' + escapeHtml(res.docCode) + ' (ฉบับที่ ' + escapeHtml(res.editionLabel) + ')</td></tr>' +
+          '<tr><th>สถานะ</th><td>อนุมัติแล้ว (ขึ้นทะเบียนจากฉบับกระดาษ)</td></tr>' +
+          '<tr><th>ครบกำหนดทบทวน</th><td>' + escapeHtml(res.nextReviewDate || '-') + '</td></tr>' +
+          '</table>' +
+          '<div class="mini" style="margin-top:10px">เอกสารขึ้นในคลังและทะเบียนเอกสาร (Master List) แล้ว</div>';
+        document.getElementById('doneCard').querySelector('h3').textContent = 'ขึ้นทะเบียนเรียบร้อย';
+        document.getElementById('doneCard').style.display = 'block';
+        window.scrollTo(0, 0);
+      }).withFailureHandler(function (err) {
+        btn.disabled = false;
+        msg.className = 'msg err';
+        msg.textContent = 'ขึ้นทะเบียนไม่สำเร็จ: ' + err.message;
+      }).registerExistingDocument(SESSION, {
+        docCode: document.getElementById('docCode').value,
+        docTitle: document.getElementById('docTitle').value,
+        docType: document.getElementById('docType').value,
+        unit: document.getElementById('unit').value,
+        edition: document.getElementById('edition').value,
+        amendment: document.getElementById('amendment').value,
+        effectiveDate: document.getElementById('effectiveDate').value,
+        reviewCycleMonths: document.getElementById('reviewCycle').value,
+        controlType: document.getElementById('controlType').value,
+        copyNo: document.getElementById('copyNo').value,
+        changeNote: document.getElementById('changeNote').value,
+        file: filePayload
+      });
+    }, function (err) {
+      btn.disabled = false;
+      msg.className = 'msg err';
+      msg.textContent = err.message;
+    });
+  }
+
   function onSubmitted(res) {
     document.getElementById('docForm').style.display = 'none';
     document.getElementById('doneBody').innerHTML =
       '<table class="meta-table">' +
-      '<tr><th>เลขที่เอกสาร</th><td>' + escapeHtml(document.getElementById('docCode').value.toUpperCase()) +
+      '<tr><th>เลขที่เอกสาร</th><td>' + escapeHtml(res.docCode) +
       ' (ฉบับที่ ' + escapeHtml(res.editionLabel) + ')</td></tr>' +
       '<tr><th>สถานะ</th><td>' + escapeHtml(res.status) + '</td></tr>' +
       '<tr><th>ไฟล์ที่อัปโหลด</th><td><a href="' + escapeHtml(res.fileUrl) + '" target="_blank">เปิดไฟล์ใน Drive</a></td></tr>' +

@@ -192,7 +192,7 @@
       $('login').hidden = true;
       $('app').hidden = false;
       $('u-name').textContent = data.user.name || data.user.username;
-      $('u-role').textContent = data.user.roleLabel;
+      $('u-role').textContent = [data.user.roleLabel].concat(data.user.dutyLabels).join(' · ');
       $('u-unit').textContent = data.user.unit || '';
       $('lnk-users').hidden = !data.isAdmin;
       $('lnk-settings').hidden = !data.isAdmin;
@@ -487,13 +487,14 @@
     if (!el) return;   // ผู้ใช้ออกจากหน้านี้ไปแล้ว
     el.className = '';
     var html = '<div class="scroll-x"><table class="list"><tr>' +
-      '<th>ชื่อผู้ใช้</th><th>ชื่อ-นามสกุล</th><th>งาน</th><th>ระดับสิทธิ์</th><th>สถานะ</th><th></th></tr>';
+      '<th>ชื่อผู้ใช้</th><th>ชื่อ-นามสกุล</th><th>งาน</th><th>ระดับสิทธิ์</th><th>หน้าที่</th><th>สถานะ</th><th></th></tr>';
     users.forEach(function (u, i) {
       html += '<tr' + (u.active ? '' : ' class="off"') + '>' +
         '<td class="mono">' + esc(u.username) + '</td>' +
         '<td>' + esc(u.name) + '</td>' +
         '<td>' + esc(u.unit) + '</td>' +
         '<td>' + esc(u.roleLabel) + '</td>' +
+        '<td>' + esc(u.dutyLabels.join(', ')) + '</td>' +
         '<td>' + (u.active ? 'ใช้งาน' : 'ปิดบัญชี') + '</td>' +
         '<td><button type="button" class="ghost" data-edit="' + i + '">แก้ไข</button></td></tr>';
     });
@@ -502,7 +503,7 @@
 
   function editUser(u) {
     var isNew = !u;
-    u = u || { username: '', name: '', email: '', unit: '', role: 'staff', active: true };
+    u = u || { username: '', name: '', email: '', unit: '', role: 'staff', duties: [], active: true };
     var f = $('u-form');
     var roles = shell.roles.map(function (r) {
       return '<option value="' + esc(r.key) + '"' + (r.key === u.role ? ' selected' : '') + '>' + esc(r.label) + '</option>';
@@ -517,6 +518,10 @@
       '<div class="row"><div class="field"><label for="f-role">ระดับสิทธิ์</label><select id="f-role">' + roles + '</select></div>' +
       field('f-password', isNew ? 'รหัสผ่านชั่วคราว' : 'ตั้งรหัสผ่านใหม่ (เว้นว่าง = ไม่เปลี่ยน)', 'password', '', 'autocomplete="new-password"') +
       '</div>' +
+      '<div class="field"><label>หน้าที่ในระบบคุณภาพ</label>' + shell.duties.map(function (d) {
+        return '<label class="check"><input type="checkbox" name="f-duty" value="' + esc(d.key) + '"' +
+          (u.duties.indexOf(d.key) > -1 ? ' checked' : '') + '> ' + esc(d.label) + '</label>';
+      }).join('') + '</div>' +
       '<label class="check"><input type="checkbox" id="f-active"' + (u.active ? ' checked' : '') + '> เปิดใช้งานบัญชี</label>' +
       '<div class="actions"><button type="submit" class="primary" id="f-save">บันทึก</button>' +
       '<button type="button" class="ghost" id="f-cancel">ยกเลิก</button></div>' +
@@ -539,6 +544,7 @@
       unit: $('f-unit').value,
       email: $('f-email').value,
       role: $('f-role').value,
+      duties: [].slice.call(document.querySelectorAll('input[name="f-duty"]:checked')).map(function (c) { return c.value; }),
       active: $('f-active').checked,
       password: $('f-password').value
     };

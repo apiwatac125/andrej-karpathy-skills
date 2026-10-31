@@ -171,6 +171,8 @@
     if (r.fileUrl) out += '<a href="' + escapeHtml(r.fileUrl) + '" target="_blank" class="badge" style="margin-right:6px">ไฟล์เอกสาร</a>';
     if (r.coverPdfUrl) {
       out += '<a href="' + escapeHtml(r.coverPdfUrl) + '" target="_blank" class="badge" style="margin-right:6px">ใบปก PDF</a>';
+    } else if (r.registered) {
+      out += '<span class="mini" style="margin-right:6px">ลงนามบนกระดาษ</span>';
     } else if (r.status === 'อนุมัติแล้ว') {
       out += '<button class="ghost gen-cover" type="button" data-id="' + escapeHtml(r.docId) +
         '" style="margin-right:6px">สร้างใบปก PDF</button>';

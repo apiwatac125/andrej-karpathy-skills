@@ -23,6 +23,15 @@ var ROLES = [
 /** ระดับต่ำสุดที่จัดการผู้ใช้และตั้งค่าระบบได้ — เปลี่ยนเป็น 4 ถ้าให้หัวหน้ากลุ่มงานทำได้ด้วย */
 var ADMIN_LEVEL = 5;
 
+/**
+ * หน้าที่ในระบบคุณภาพ — ติดที่ตัวผู้ใช้ แยกจากระดับสิทธิ์ เพราะเป็นหน้าที่ ไม่ใช่ลำดับสูงต่ำ
+ * (ผู้ปฏิบัติงานเป็น Auditor ได้) · ผู้ดูแลระบบ (ADMIN_LEVEL) ทำได้ทุกหน้าที่
+ */
+var DUTIES = [
+  { key: 'qmr', label: 'QMR (ผู้แทนฝ่ายบริหารคุณภาพ)', short: 'QMR' },
+  { key: 'auditor', label: 'ผู้ตรวจติดตามภายใน (Auditor)', short: 'Auditor' }
+];
+
 /** ลิงก์เชื่อมระบบอื่น (เก็บเป็น Script Property ชื่อตาม key) ที่ผู้ดูแลระบบแก้ได้ในหน้า "ตั้งค่าระบบ" */
 var SETTING_LINKS = [
   { key: 'SPMT07_APP_URL', label: 'URL เว็บแอประบบจัดซื้อ (SP-MT-07)', hint: 'ลงท้ายด้วย /exec' },
@@ -48,6 +57,7 @@ var MENU = [
       { id: 'wi-upload', label: 'ส่งเอกสารที่แก้พร้อมลงนาม', minLevel: 2, wi: 'upload' },
       { id: 'wi-status', label: 'ติดตามสถานะ', minLevel: 2, wi: 'home' },
       { id: 'wi-archive', label: 'คลังเอกสาร', minLevel: 1, wi: 'archive' },
+      { id: 'wi-masterlist', label: 'ทะเบียนเอกสาร (Master List)', minLevel: 1, wi: 'masterlist' },
       { id: 'wi-audit', label: 'ตรวจติดตามภายใน', minLevel: 3, wi: 'audit' },
       { id: 'wi-capa', label: 'CAPA', minLevel: 2, wi: 'capa' }
     ]
