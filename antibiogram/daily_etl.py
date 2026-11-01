@@ -145,13 +145,14 @@ def push_to_sheet(df: pd.DataFrame, sheet_id: str, creds_path: str, worksheet: s
 
 
 def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
-                action: str = "antibiogram", chunk: int = 4000) -> int:
+                action: str = "antibiogram", chunk: int = 2000, retries: int = 3) -> int:
     """เขียนตารางสรุปขึ้น Google Sheet ผ่าน GAS Web App เดิม (ใช้ secret เดียวกับ daily report).
 
     ส่งเป็นก้อน: ก้อนแรก mode=overwrite (GAS เคลียร์ tab ก่อนเขียน) ก้อนถัดไป mode=append.
-    ฝั่ง GAS รับ action='antibiogram' (ดู deploy/gas_antibiogram.gs).
+    มี retry + backoff กัน script.google.com timeout ชั่วคราว.
     """
     import json
+    import time
     import requests
     header = list(df.columns)
     rows = df.astype(object).where(df.notna(), "").values.tolist()
@@ -159,23 +160,45 @@ def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
         payload = {"secret": secret, "action": action, "header": header,
                    "rows": rows[i:i + chunk],
                    "mode": "overwrite" if i == 0 else "append"}
-        r = requests.post(gas_url, data=json.dumps(payload), timeout=180)
-        r.raise_for_status()
+        for attempt in range(retries):
+            try:
+                r = requests.post(gas_url, data=json.dumps(payload), timeout=120)
+                r.raise_for_status()
+                break
+            except Exception:
+                if attempt == retries - 1:
+                    raise
+                time.sleep(3 * (attempt + 1))  # 3s, 6s
     return len(rows)
+
+
+def _read_one_his(f):
+    """อ่าน qr1020 1 ไฟล์ — ลองหลาย engine (SoftCon .xls เป็น OLE บ้าง HTML-as-xls บ้าง)."""
+    for eng in ("xlrd", "openpyxl"):
+        try:
+            xl = pd.ExcelFile(f, engine=eng)
+            return [pd.read_excel(f, sheet_name=s, dtype=object, engine=eng) for s in xl.sheet_names]
+        except Exception:
+            continue
+    # fallback: ไฟล์ที่จริง ๆ เป็น HTML table (รายงานบางระบบ export แบบนี้แต่ตั้งนามสกุล .xls)
+    try:
+        return pd.read_html(f)  # คืน list ของ DataFrame
+    except Exception as e:
+        raise e
 
 
 def _read_his_files(his_dir):
     """อ่านไฟล์ qr1020 (.xls ของ SoftCon) ทุกไฟล์+ทุกชีต แล้วต่อกัน."""
-    pats = sorted(glob.glob(str(Path(his_dir) / "qr1020_*.xls*"))) or \
-        sorted(glob.glob(str(Path(his_dir) / "*.xls*")))
-    frames = []
+    pats = sorted(glob.glob(str(Path(his_dir) / "qr1020_*.xls*")), key=str.lower) or \
+        sorted(glob.glob(str(Path(his_dir) / "*.xls*")), key=str.lower)
+    frames, ok = [], 0
     for f in pats:
         try:
-            xl = pd.ExcelFile(f)
-            for sh in xl.sheet_names:
-                frames.append(pd.read_excel(f, sheet_name=sh, dtype=object))
+            frames.extend(_read_one_his(f))
+            ok += 1
         except Exception as e:
             print(f"  อ่าน his ไม่ได้ {Path(f).name}: {e}", file=sys.stderr)
+    print(f"  his: อ่านสำเร็จ {ok}/{len(pats)} ไฟล์", file=sys.stderr)
     return (pd.concat(frames, ignore_index=True) if frames else None), pats
 
 
@@ -238,6 +261,10 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
     if his is not None and "infection_origin" in std.columns:
         oc = std["infection_origin"].value_counts().to_dict()
         print(f"admit matched: {steps.get('admit_matched', 0):,} · origin {oc}")
+    # จำนวน isolate ต่อปี (หลัง clean/dedup report) — ดูว่าปีไหนข้อมูลครบ/ขาด
+    _dt = pd.to_datetime(std.get("collect_datetime"), errors="coerce")
+    _yc = _dt.dropna().dt.year.value_counts().sort_index()
+    print("isolate ต่อปี: " + " · ".join(f"{int(y)}={int(n):,}" for y, n in _yc.items()))
     summary = build_summary(std, profile["ab_cols"], conditions, rolling_months=rolling_months)
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
