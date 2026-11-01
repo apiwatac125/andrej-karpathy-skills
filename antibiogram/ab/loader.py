@@ -33,7 +33,10 @@ def read_dbf(file, encoding: str = "cp874") -> pd.DataFrame:
         tmp = tempfile.NamedTemporaryFile(suffix=".dbf", delete=False)
         tmp.write(file.read()); tmp.close()
         path = tmp.name
-    table = DBF(path, encoding=encoding, char_decode_errors="ignore")
+    # ignore_missing_memofile: DBF ที่มี memo field แต่ไม่มีไฟล์ .FPT/.DBT คู่กัน (เช่น range export
+    # ที่ copy มาไฟล์เดียว) จะ error ถ้าไม่ตั้ง -> ข้ามช่อง memo แทนที่จะอ่านไฟล์ไม่ได้ทั้งไฟล์
+    table = DBF(path, encoding=encoding, char_decode_errors="ignore",
+                ignore_missing_memofile=True)
     return pd.DataFrame(iter(table))
 
 
