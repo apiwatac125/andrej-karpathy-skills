@@ -59,10 +59,11 @@ if "%ABDIR%"=="" (
   echo [%date% %time%] [4] WARN: อ่าน DBF_FOLDER จาก config.py ไม่ได้ - ข้าม antibiogram>> "%LOG%"
 ) else (
   echo [%date% %time%] [4] antibiogram ETL (DBF=%ABDIR%)...>> "%LOG%"
+  REM --his-dir = โฟลเดอร์ qr1020 (SoftCon) สำหรับแยก CAI/HAI · ต้อง pip install xlrd
   if "%ABGAS%"=="" (
-    python "%ABPY%" --dbf-dir "%ABDIR%" --out "%ABOUT%" >> "%LOG%" 2>&1
+    python "%ABPY%" --dbf-dir "%ABDIR%" --his-dir "D:\HIS_export" --out "%ABOUT%" >> "%LOG%" 2>&1
   ) else (
-    python "%ABPY%" --dbf-dir "%ABDIR%" --out "%ABOUT%" --gas-url "%ABGAS%" --gas-secret "%ABSEC%" >> "%LOG%" 2>&1
+    python "%ABPY%" --dbf-dir "%ABDIR%" --his-dir "D:\HIS_export" --out "%ABOUT%" --gas-url "%ABGAS%" --gas-secret "%ABSEC%" >> "%LOG%" 2>&1
   )
 )
 

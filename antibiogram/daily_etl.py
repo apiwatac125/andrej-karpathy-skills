@@ -164,6 +164,39 @@ def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
     return len(rows)
 
 
+def _read_his_files(his_dir):
+    """อ่านไฟล์ qr1020 (.xls ของ SoftCon) ทุกไฟล์+ทุกชีต แล้วต่อกัน."""
+    pats = sorted(glob.glob(str(Path(his_dir) / "qr1020_*.xls*"))) or \
+        sorted(glob.glob(str(Path(his_dir) / "*.xls*")))
+    frames = []
+    for f in pats:
+        try:
+            xl = pd.ExcelFile(f)
+            for sh in xl.sheet_names:
+                frames.append(pd.read_excel(f, sheet_name=sh, dtype=object))
+        except Exception as e:
+            print(f"  อ่าน his ไม่ได้ {Path(f).name}: {e}", file=sys.stderr)
+    return (pd.concat(frames, ignore_index=True) if frames else None), pats
+
+
+def _resolve_his_cols(his, want):
+    """จับคอลัมน์ HN/AN/วันแอดมิต แบบ exact ก่อน แล้ว fuzzy (กันหัวคอลัมน์ไทยเพี้ยนจาก .xls)."""
+    cols = [str(c) for c in his.columns]
+
+    def find(target, keys):
+        if target and target in his.columns:
+            return target
+        for c in cols:
+            if any(k in c for k in keys):
+                return c
+        return None
+    return {
+        "his_hn_col": find(want.get("hn_col"), ["HN", "hn"]),
+        "his_an_col": find(want.get("an_col"), ["AN", "an"]),
+        "his_admit_col": find(want.get("admit_col"), ["ลงทะเบียน", "ลงทะ", "admit", "Admit", "regist"]),
+    }
+
+
 def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
         rolling_months=12, drop_sources=None, sheet_id=None, creds=None,
         gas_url=None, gas_secret=None):
@@ -179,20 +212,32 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
     his = None
     his_kw = {}
     if his_dir:
-        hfiles = sorted({*glob.glob(str(Path(his_dir) / "*.xls*"))})
-        his = pd.concat([loader.read_table(f) for f in hfiles], ignore_index=True) if hfiles else None
-        h = profile.get("his", {})
-        his_kw = dict(his_hn_col=h.get("hn_col"), his_admit_col=h.get("admit_col"),
-                      his_an_col=h.get("an_col"))
-        # qr1020 HN เป็น 10 หลัก -> ตัด 2 หลักหน้าให้ตรง HN 8 หลักใน DBF (เหมือน his_ward_sync.norm_hn)
-        hn_col = h.get("hn_col")
-        if his is not None and hn_col and hn_col in his.columns:
-            import re
-            his[hn_col] = his[hn_col].map(
-                lambda s: (lambda d: d[2:] if len(d) >= 10 else d)(re.sub(r"\D", "", str(s))))
+        his, hfiles = _read_his_files(his_dir)
+        if his is None:
+            print(f"  ไม่พบไฟล์ qr1020 ใน {his_dir} -> ข้าม CAI/HAI", file=sys.stderr)
+        else:
+            his_kw = _resolve_his_cols(his, profile.get("his", {}))
+            an, hn, adm = his_kw["his_an_col"], his_kw["his_hn_col"], his_kw["his_admit_col"]
+            # เก็บเฉพาะ IPD (มี AN) + ตัดซ้ำตาม AN ลดปริมาณ
+            if an and an in his.columns:
+                his = his[his[an].notna() & (his[an].astype(str).str.strip() != "")]
+                his = his.drop_duplicates(subset=[an], keep="last")
+            # qr1020 HN 10 หลัก -> ตัด 2 หลักหน้าให้ตรง HN 8 หลักใน DBF
+            if hn and hn in his.columns:
+                import re
+                his[hn] = his[hn].map(
+                    lambda s: (lambda d: d[2:] if len(d) >= 10 else d)(re.sub(r"\D", "", str(s))))
+            print(f"his: {len(hfiles)} ไฟล์ · {len(his):,} admission (IPD) · "
+                  f"คอลัมน์ HN={hn} AN={an} admit={adm}")
+            if not adm:
+                print("  ⚠️ หาคอลัมน์วันแอดมิตไม่เจอ (หัวไทยอาจเพี้ยน) -> CAI/HAI จะไม่ทำงาน. "
+                      f"คอลัมน์ที่มี: {list(his.columns)[:15]}", file=sys.stderr)
 
-    std, _ = pipeline.prepare(raw, profile["col_map"], profile["ab_cols"], conditions,
-                              his_df=his, **his_kw)
+    std, steps = pipeline.prepare(raw, profile["col_map"], profile["ab_cols"], conditions,
+                                  his_df=his, **his_kw)
+    if his is not None and "infection_origin" in std.columns:
+        oc = std["infection_origin"].value_counts().to_dict()
+        print(f"admit matched: {steps.get('admit_matched', 0):,} · origin {oc}")
     summary = build_summary(std, profile["ab_cols"], conditions, rolling_months=rolling_months)
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
