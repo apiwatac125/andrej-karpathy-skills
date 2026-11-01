@@ -48,11 +48,16 @@ def read_all_dbf(folder: str, encoding: str = "cp874") -> tuple[pd.DataFrame, li
 
 
 def dedup_reports(raw: pd.DataFrame,
-                  keys=("REF_NO", "LAB_NO", "ORGANISM"), rpt_col="RPTDATE") -> pd.DataFrame:
-    """ตัดรายงานซ้ำข้ามไฟล์ (รายงานเบื้องต้น/ฉบับสุดท้าย) — เก็บฉบับ RPTDATE ล่าสุด."""
-    if rpt_col in raw.columns and all(k in raw.columns for k in keys):
+                  keys=("REF_NO", "LAB_NO", "ORGANISM", "SPCDATE"), rpt_col="RPTDATE") -> pd.DataFrame:
+    """ตัดรายงานซ้ำ (เบื้องต้น/ฉบับสุดท้าย ของ specimen เดียวกัน) — เก็บฉบับ RPTDATE ล่าสุด.
+
+    ต้องมี SPCDATE (วันเก็บ) ในคีย์ด้วย ไม่งั้น REF_NO/LAB_NO ที่รีเซ็ตทุกปีจะชนข้ามปี
+    แล้วทิ้ง isolate ปีก่อน (เคยทำให้ N ปีย้อนหลังหายครึ่ง).
+    """
+    present = [k for k in keys if k in raw.columns]
+    if rpt_col in raw.columns and present:
         raw = (raw.sort_values(rpt_col, na_position="first")
-                  .drop_duplicates(list(keys), keep="last").reset_index(drop=True))
+                  .drop_duplicates(present, keep="last").reset_index(drop=True))
     return raw
 
 
