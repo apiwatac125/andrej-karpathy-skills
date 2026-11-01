@@ -145,7 +145,7 @@ def push_to_sheet(df: pd.DataFrame, sheet_id: str, creds_path: str, worksheet: s
 
 
 def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
-                action: str = "antibiogram", chunk: int = 2000, retries: int = 3) -> int:
+                action: str = "antibiogram", chunk: int = 2000, retries: int = 5) -> int:
     """เขียนตารางสรุปขึ้น Google Sheet ผ่าน GAS Web App เดิม (ใช้ secret เดียวกับ daily report).
 
     ส่งเป็นก้อน: ก้อนแรก mode=overwrite (GAS เคลียร์ tab ก่อนเขียน) ก้อนถัดไป mode=append.
@@ -162,13 +162,13 @@ def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
                    "mode": "overwrite" if i == 0 else "append"}
         for attempt in range(retries):
             try:
-                r = requests.post(gas_url, data=json.dumps(payload), timeout=120)
+                r = requests.post(gas_url, data=json.dumps(payload), timeout=(30, 120))
                 r.raise_for_status()
                 break
             except Exception:
                 if attempt == retries - 1:
                     raise
-                time.sleep(3 * (attempt + 1))  # 3s, 6s
+                time.sleep(5 * (attempt + 1))  # 5,10,15,20s
     return len(rows)
 
 
