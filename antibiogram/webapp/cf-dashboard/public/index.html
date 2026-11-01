@@ -78,6 +78,13 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 .msg.err{color:var(--b51)}
 .setup{margin-top:14px;display:none;gap:10px;flex-wrap:wrap;align-items:center}
 .updated{font-size:.74rem;color:var(--faint);margin-top:2px}
+.inp2{font:inherit;font-size:.84rem;padding:7px 12px;border:1px solid var(--line2);border-radius:9px;background:var(--surface2);color:var(--fg);min-width:150px}
+.chk{font:inherit;font-size:.82rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.chk input{accent-color:var(--accent)}
+.count{font-size:.76rem;color:var(--faint);margin-left:auto;white-space:nowrap}
+.hm tbody tr:hover td{background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.hm tbody tr:hover td.org{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--fg)}
+.hm tbody tr:nth-child(even) td.org{background:color-mix(in srgb,var(--surface2) 60%,var(--surface))}
 </style>
 </head>
 <body>
@@ -109,6 +116,13 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
       <select class="sel" id="stratumSel" aria-label="กลุ่ม"></select>
       <span class="lab" style="margin-left:6px">ปี (รายปี)</span>
       <select class="sel" id="yearSel" aria-label="ปีรายปี"></select>
+      <input class="inp2" id="orgSearch" placeholder="🔍 ค้นหาเชื้อ…" aria-label="ค้นหาเชื้อ">
+      <select class="sel" id="sortSel" aria-label="เรียงเชื้อ">
+        <option value="freq">เรียง: พบบ่อย → น้อย</option>
+        <option value="name">เรียง: ชื่อ ก–ฮ</option>
+      </select>
+      <label class="chk"><input type="checkbox" id="onlyRep" checked> เฉพาะ N≥30</label>
+      <span class="count" id="count"></span>
     </div>
 
     <div class="panels both" id="panels"><div class="msg" id="msg">กำลังโหลดข้อมูล…</div></div>
@@ -148,6 +162,7 @@ function drugRank(d){ var i=ORDER.indexOf(d); return i<0?999:i; }
 
 var DATA = null;    // {strata:[...], byStratum:{st:{years:[],roll:'',orgs:[],drugs:[],cells:{org:{drug:{annual,roll}}},N:{org:{annual,roll}}}}}
 var mode = 'both', stratum = null, annualYear = null;
+var orgQuery = '', sortMode = 'freq', onlyReportable = true;
 
 // default ช่องรายปี = ปีล่าสุดที่ "จบแล้ว" (น้อยกว่าปีปัจจุบัน) ไม่ใช่ปีที่ยังเดินอยู่
 function defaultAnnualYear(S){
@@ -234,6 +249,10 @@ function transform(rows){
     S.annualYear = S.years.length ? S.years[S.years.length-1] : null;
     S.drugs = Object.keys(S.drugsSet).sort(function(a,b){ return drugRank(a)-drugRank(b) || a.localeCompare(b); });
     S.orgs = Object.keys(S.cells).sort();
+    // ความถี่ของเชื้อ = N สูงสุดข้ามทุกยา/ทุกช่วง -> ใช้เรียง "พบบ่อยก่อน"
+    S.totalN = {};
+    S.orgs.forEach(function(o){ var m=0, nn=S.N[o]||{}; for(var k in nn) m=Math.max(m, nn[k]||0); S.totalN[o]=m; });
+    S.orgsByFreq = S.orgs.slice().sort(function(a,b){ return (S.totalN[b]||0)-(S.totalN[a]||0) || a.localeCompare(b); });
   });
   return { strata: orderStrata, byStratum: byStratum };
 }
@@ -263,38 +282,63 @@ function cellHTML(c, field){
   if(n<30) return '<td class="cell lt30" title="N<30 — ไม่รายงาน"><div class="pct">'+pct+'%</div><div class="n">N='+n+'</div></td>';
   return '<td class="cell '+band(pct)+'" title="'+pct+'% · N='+n+'"><div class="pct">'+pct+'<span style="font-size:.7em">%</span></div><div class="n">'+n+'</div></td>';
 }
-function tableHTML(S, field){
-  var drugs = S.drugs.filter(function(d){ return S.orgs.some(function(o){ var c=S.cells[o][d]; return c && c[field]!=null; }); });
+function tableHTML(S, field, orgs){
+  if(!orgs.length) return '<div class="msg">ไม่พบเชื้อตามเงื่อนไข</div>';
+  var drugs = S.drugs.filter(function(d){ return orgs.some(function(o){ var c=S.cells[o][d]; return c && c[field]!=null; }); });
   var head='<thead><tr><th class="org">เชื้อ \\ ยา</th>'+drugs.map(function(d){return '<th title="'+d+'">'+(ABBR[d]||d)+'</th>';}).join('')+'</tr></thead>';
-  var body=S.orgs.map(function(o){
+  var body=orgs.map(function(o){
     var tds=drugs.map(function(d){ return cellHTML(S.cells[o][d], field); }).join('');
     return '<tr><td class="org">'+o+'</td>'+tds+'</tr>';
   }).join('');
   return '<table class="hm">'+head+'<tbody>'+body+'</tbody></table>';
 }
-function Nrange(S, field){
-  var ns=S.orgs.map(function(o){ return (S.N[o]||{})[field]; }).filter(function(x){return x;});
+function Nrange(S, field, orgs){
+  var ns=orgs.map(function(o){ return (S.N[o]||{})[field]; }).filter(function(x){return x;});
   return ns.length ? ('N '+Math.min.apply(null,ns).toLocaleString()+'–'+Math.max.apply(null,ns).toLocaleString()) : '';
 }
-function panel(S, which){
+// ช่วงที่กำลังแสดง (รายปี/rolling) -> ใช้คัดเชื้อให้ทั้งสอง panel ตรงแถวกัน
+function activeFields(S){
+  var yr=(annualYear && S.years.indexOf(annualYear)>=0)?annualYear:S.annualYear;
+  var f=[];
+  if((mode==='annual'||mode==='both') && yr) f.push('Y'+yr);
+  if(mode==='roll'||mode==='both') f.push('roll');
+  return f;
+}
+function visibleOrgs(S){
+  var fields=activeFields(S);
+  var base=(sortMode==='name'? S.orgs : S.orgsByFreq);
+  var q=orgQuery.trim().toLowerCase();
+  return base.filter(function(o){
+    if(q && o.toLowerCase().indexOf(q)<0) return false;
+    if(onlyReportable){
+      var ok=fields.some(function(f){ return S.drugs.some(function(d){ var c=S.cells[o][d]; return c && Array.isArray(c[f]) && c[f][1]>=30; }); });
+      if(!ok) return false;
+    }
+    return true;
+  });
+}
+function panel(S, which, orgs){
   var ann = which==='annual';
   var yr = (annualYear && S.years.indexOf(annualYear) >= 0) ? annualYear : S.annualYear;
   var field = ann ? ('Y'+yr) : 'roll';
   if (ann && !yr) return '<div class="panel"><div class="panel-head"><span class="panel-title">รายปี</span></div><div class="msg">ไม่มีข้อมูลช่วงนี้</div></div>';
   var title = ann ? ('รายปี '+(Number(yr)+543)+' ('+yr+')') : '12 เดือนล่าสุด (rolling)';
   var win   = ann ? '' : winText(S, field);   // รายปี = ปีปฏิทิน (ไม่โชว์ขอบวันที่) · rolling โชว์ช่วงวันจริง
-  var meta  = (win ? win+' · ' : (ann ? 'ปีปฏิทิน · ' : '')) + Nrange(S, field);
+  var meta  = (win ? win+' · ' : (ann ? 'ปีปฏิทิน · ' : '')) + Nrange(S, field, orgs);
   return '<div class="panel"><div class="panel-head '+(ann?'ann':'roll')+'">'+
     '<span class="panel-title">'+title+'</span><span class="panel-meta">'+meta+'</span></div>'+
-    '<div class="tscroll">'+tableHTML(S, field)+'</div></div>';
+    '<div class="tscroll">'+tableHTML(S, field, orgs)+'</div></div>';
 }
 function render(){
   var S = DATA.byStratum[stratum]; if(!S) return;
+  var orgs = visibleOrgs(S);
   var el=document.getElementById('panels');
   el.className='panels'+(mode==='both'?' both':'');
-  el.innerHTML = mode==='annual' ? panel(S,'annual')
-               : mode==='roll'   ? panel(S,'roll')
-               : panel(S,'annual')+panel(S,'roll');
+  el.innerHTML = mode==='annual' ? panel(S,'annual',orgs)
+               : mode==='roll'   ? panel(S,'roll',orgs)
+               : panel(S,'annual',orgs)+panel(S,'roll',orgs);
+  var cnt=document.getElementById('count');
+  if(cnt) cnt.textContent = 'แสดง ' + orgs.length + ' / ' + S.orgs.length + ' เชื้อ';
 }
 
 function initUI(){
@@ -319,6 +363,9 @@ document.getElementById('modePills').addEventListener('click', function(e){
 });
 document.getElementById('stratumSel').addEventListener('change', function(e){ stratum=e.target.value; fillYearSel(DATA.byStratum[stratum]); render(); });
 document.getElementById('yearSel').addEventListener('change', function(e){ annualYear=e.target.value; render(); });
+document.getElementById('orgSearch').addEventListener('input', function(e){ orgQuery=e.target.value; render(); });
+document.getElementById('sortSel').addEventListener('change', function(e){ sortMode=e.target.value; render(); });
+document.getElementById('onlyRep').addEventListener('change', function(e){ onlyReportable=e.target.checked; render(); });
 document.getElementById('loadBtn').addEventListener('click', function(){
   var v=document.getElementById('sheetInput').value.trim();
   var m=v.match(/\/d\/([a-zA-Z0-9_-]+)/); SHEET_ID = m ? m[1] : v;          // รับทั้ง URL เต็มและ ID
