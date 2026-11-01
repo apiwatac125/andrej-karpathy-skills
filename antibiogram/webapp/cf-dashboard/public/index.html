@@ -85,6 +85,29 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 .hm tbody tr:hover td{background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
 .hm tbody tr:hover td.org{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--fg)}
 .hm tbody tr:nth-child(even) td.org{background:color-mix(in srgb,var(--surface2) 60%,var(--surface))}
+/* หัวข้อกลุ่มยา + เส้นคั่นระหว่างชนิด */
+.hm thead tr.clsrow th{position:static;background:var(--surface);color:var(--accent-2);font-weight:800;
+  font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;padding:5px 4px;text-align:center;
+  border-bottom:1px solid var(--line2)}
+.hm thead tr.clsrow th.org{background:var(--surface);border-right:2px solid var(--line2)}
+.hm th.sep,.hm td.sep{border-left:2px solid var(--line2)}
+/* มือถือ: ตารางกระชับ อ่านง่ายบนจอเล็ก */
+@media (max-width:640px){
+  .wrap{padding-block:16px 40px}
+  h1{font-size:1.15rem}
+  .ctrls{gap:8px 10px}
+  .inp2{min-width:0;flex:1 1 130px}
+  .sel{flex:1 1 130px}
+  .count{margin-left:0;flex-basis:100%}
+  .panel-title{font-size:.9rem}
+  .hm{font-size:.72rem}
+  .hm thead th{font-size:.6rem;padding:5px 3px}
+  .hm td.cell{min-width:36px;padding:3px 3px}
+  .hm td.cell .pct{font-size:.74rem}
+  .hm td.cell .n{font-size:.54rem}
+  .hm th.org,.hm td.org{max-width:108px;font-size:.72rem;padding:6px 7px;line-height:1.2}
+  .legend{font-size:.72rem;gap:6px 10px}
+}
 </style>
 </head>
 <body>
@@ -159,6 +182,25 @@ var ABBR = {"Ampicillin":"AMP","Amoxicillin/Cla":"AMC","Ampicillin/Sulb":"SAM","
 "Ceftazidime/Avi":"CZA"};
 var ORDER = Object.keys(ABBR);
 function drugRank(d){ var i=ORDER.indexOf(d); return i<0?999:i; }
+
+// จัดกลุ่มยาตามชนิด (ชื่อเต็มจากชีต -> รหัสกลุ่ม)
+var CLASS = {
+  "Ampicillin":"PEN","Amoxicillin/Cla":"PEN","Ampicillin/Sulb":"PEN","Piperacil/Tazob":"PEN","Oxacillin":"PEN","Penicillin":"PEN",
+  "Cefazolin":"CEPH","Cefuroxime":"CEPH","Cefoxitin":"CEPH","Ceftriaxone":"CEPH","Cefotaxime":"CEPH","Ceftazidime":"CEPH","Cefepime":"CEPH","Cefoperazone/Su":"CEPH","Ceftazidime/Avi":"CEPH","Cefixime":"CEPH","Cefpodoxime":"CEPH",
+  "Ertapenem":"CARB","Meropenem":"CARB","Imipenem":"CARB","Doripenem":"CARB",
+  "Gentamicin":"AMINO","Amikacin":"AMINO","Netilmicin":"AMINO","Tobramycin":"AMINO",
+  "Ciprofloxacin":"FQ","Levofloxacin":"FQ","Ofloxacin":"FQ","Norfloxacin":"FQ","Moxifloxacin":"FQ",
+  "Trimetho/Sulfa.":"FOL","Trimethoprim/Sul":"FOL",
+  "Tetracyclin":"TET","Doxycycline":"TET","Tigecycline":"TET","Minocycline":"TET",
+  "Vancomycin":"GLY","Teicoplanin":"GLY",
+  "Erythromycin":"MLS","Clindamycin":"MLS","Azithromycin":"MLS",
+  "Colistin":"POLY","Polymyxin B":"POLY",
+  "Chloramphenicol":"OTH","Fosfomycin":"OTH","Nitrofurantoin":"OTH","Linezolid":"OTH","Fusidic acid":"OTH"
+};
+var CLASS_ORDER = ["PEN","CEPH","CARB","AMINO","FQ","FOL","TET","GLY","MLS","POLY","OTH"];
+var CLASS_LABEL = {PEN:"เพนิซิลลิน",CEPH:"เซฟาโลสปอริน",CARB:"คาร์บาพีเนม",AMINO:"อะมิโนไกลโคไซด์",FQ:"ฟลูออโรควิโนโลน",FOL:"โฟเลต",TET:"เตตราไซคลิน",GLY:"ไกลโคเปปไทด์",MLS:"แมโครไลด์/ลินโคซาไมด์",POLY:"โพลีมิกซิน",OTH:"อื่น ๆ"};
+function classOf(d){ return CLASS[d] || "OTH"; }
+function classRank(d){ var i=CLASS_ORDER.indexOf(classOf(d)); return i<0?99:i; }
 
 var DATA = null;    // {strata:[...], byStratum:{st:{years:[],roll:'',orgs:[],drugs:[],cells:{org:{drug:{annual,roll}}},N:{org:{annual,roll}}}}}
 var mode = 'both', stratum = null, annualYear = null;
@@ -247,7 +289,7 @@ function transform(rows){
     S.years = Object.keys(S.yearsSet).sort();
     S.annualField = S.years.length ? ('Y'+S.years[S.years.length-1]) : null;
     S.annualYear = S.years.length ? S.years[S.years.length-1] : null;
-    S.drugs = Object.keys(S.drugsSet).sort(function(a,b){ return drugRank(a)-drugRank(b) || a.localeCompare(b); });
+    S.drugs = Object.keys(S.drugsSet).sort(function(a,b){ return classRank(a)-classRank(b) || drugRank(a)-drugRank(b) || a.localeCompare(b); });
     S.orgs = Object.keys(S.cells).sort();
     // ความถี่ของเชื้อ = N สูงสุดข้ามทุกยา/ทุกช่วง -> ใช้เรียง "พบบ่อยก่อน"
     S.totalN = {};
@@ -273,24 +315,36 @@ function winText(S, field){
   return (w && (w.start||w.end)) ? (gdate(w.start)+' – '+gdate(w.end)) : '';
 }
 function band(v){ return v>=90?'b90':v>=80?'b80':v>=70?'b70':v>=51?'b51':'b50'; }
-function cellHTML(c, field){
-  if(!c) return '<td class="cell empty">·</td>';
+function cellHTML(c, field, sep){
+  var sc = sep ? ' sep' : '';
+  if(!c) return '<td class="cell empty'+sc+'">·</td>';
   var v=c[field];
-  if(v==='R') return '<td class="cell rcell" title="ดื้อโดยธรรมชาติ (intrinsic)">R</td>';
-  if(!v) return '<td class="cell empty">·</td>';
+  if(v==='R') return '<td class="cell rcell'+sc+'" title="ดื้อโดยธรรมชาติ (intrinsic)">R</td>';
+  if(!v) return '<td class="cell empty'+sc+'">·</td>';
   var pct=v[0], n=v[1];
-  if(n<30) return '<td class="cell lt30" title="N<30 — ไม่รายงาน"><div class="pct">'+pct+'%</div><div class="n">N='+n+'</div></td>';
-  return '<td class="cell '+band(pct)+'" title="'+pct+'% · N='+n+'"><div class="pct">'+pct+'<span style="font-size:.7em">%</span></div><div class="n">'+n+'</div></td>';
+  if(n<30) return '<td class="cell lt30'+sc+'" title="N<30 — ไม่รายงาน"><div class="pct">'+pct+'%</div><div class="n">N='+n+'</div></td>';
+  return '<td class="cell '+band(pct)+sc+'" title="'+pct+'% · N='+n+'"><div class="pct">'+pct+'<span style="font-size:.7em">%</span></div><div class="n">'+n+'</div></td>';
 }
 function tableHTML(S, field, orgs){
   if(!orgs.length) return '<div class="msg">ไม่พบเชื้อตามเงื่อนไข</div>';
   var drugs = S.drugs.filter(function(d){ return orgs.some(function(o){ var c=S.cells[o][d]; return c && c[field]!=null; }); });
-  var head='<thead><tr><th class="org">เชื้อ \\ ยา</th>'+drugs.map(function(d){return '<th title="'+d+'">'+(ABBR[d]||d)+'</th>';}).join('')+'</tr></thead>';
+  // จับยาเป็นกลุ่มตามชนิด (ไว้ทำหัวข้อกลุ่ม + เส้นคั่น)
+  var groups=[], sep={};
+  drugs.forEach(function(d){
+    var c=classOf(d), g=groups[groups.length-1];
+    if(g && g.cls===c) g.drugs.push(d); else { groups.push({cls:c,drugs:[d]}); if(groups.length>1) sep[d]=1; }
+  });
+  var clsRow='<tr class="clsrow"><th class="org"></th>'+groups.map(function(g){
+    return '<th class="cls'+(g.cls!==groups[0].cls?' sep':'')+'" colspan="'+g.drugs.length+'">'+(CLASS_LABEL[g.cls]||g.cls)+'</th>';
+  }).join('')+'</tr>';
+  var abbrRow='<tr><th class="org">เชื้อ \\ ยา</th>'+drugs.map(function(d){
+    return '<th class="'+(sep[d]?'sep':'')+'" title="'+d+'">'+(ABBR[d]||d)+'</th>';
+  }).join('')+'</tr>';
   var body=orgs.map(function(o){
-    var tds=drugs.map(function(d){ return cellHTML(S.cells[o][d], field); }).join('');
+    var tds=drugs.map(function(d){ return cellHTML(S.cells[o][d], field, sep[d]); }).join('');
     return '<tr><td class="org">'+o+'</td>'+tds+'</tr>';
   }).join('');
-  return '<table class="hm">'+head+'<tbody>'+body+'</tbody></table>';
+  return '<table class="hm"><thead>'+clsRow+abbrRow+'</thead><tbody>'+body+'</tbody></table>';
 }
 function Nrange(S, field, orgs){
   var ns=orgs.map(function(o){ return (S.N[o]||{})[field]; }).filter(function(x){return x;});
