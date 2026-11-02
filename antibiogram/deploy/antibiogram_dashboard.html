@@ -91,6 +91,10 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
   border-bottom:1px solid var(--line2)}
 .hm thead tr.clsrow th.org{background:var(--surface);border-right:2px solid var(--line2)}
 .hm th.sep,.hm td.sep{border-left:2px solid var(--line2)}
+/* หัวคอลัมน์ = ชื่อยาเต็มแนวตั้ง (แบบเล่ม antibiogram) */
+.hm thead th.vname{vertical-align:bottom;padding:6px 3px;min-width:30px}
+.hm thead th.vname span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;
+  font-size:.66rem;font-weight:700;line-height:1.15;display:inline-block;letter-spacing:.2px}
 /* มือถือ: ตารางกระชับ อ่านง่ายบนจอเล็ก */
 @media (max-width:640px){
   .wrap{padding-block:16px 40px}
@@ -102,6 +106,7 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
   .panel-title{font-size:.9rem}
   .hm{font-size:.72rem}
   .hm thead th{font-size:.6rem;padding:5px 3px}
+  .hm thead th.vname span{font-size:.6rem}
   .hm td.cell{min-width:36px;padding:3px 3px}
   .hm td.cell .pct{font-size:.74rem}
   .hm td.cell .n{font-size:.54rem}
@@ -173,34 +178,45 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 var SHEET_ID = new URLSearchParams(location.search).get('sheet') || "1LijjuAYdKmwqr2Daix-usN2FlZzMNbl62VPXMkCaSww";
 var TAB = new URLSearchParams(location.search).get('tab') || "Antibiogram";
 
-// ย่อชื่อยา (เต็ม -> ย่อ) + ลำดับการแสดง (เรียงเชิงคลินิก)
-var ABBR = {"Ampicillin":"AMP","Amoxicillin/Cla":"AMC","Ampicillin/Sulb":"SAM","Piperacil/Tazob":"TZP",
-"Cefoperazone/Su":"SCF","Ceftazidime":"CAZ","Ceftriaxone":"CRO","Cefotaxime":"CTX","Cefepime":"FEP","Cefoxitin":"FOX",
-"Ertapenem":"ETP","Meropenem":"MEM","Imipenem":"IPM","Doripenem":"DOR","Amikacin":"AMK","Gentamicin":"GEN",
-"Ciprofloxacin":"CIP","Levofloxacin":"LVX","Trimethoprim/Sul":"SXT","Tigecycline":"TGC","Colistin":"CST",
-"Oxacillin":"OX","Clindamycin":"DA","Erythromycin":"E","Vancomycin":"VAN","Tetracyclin":"TET","Chloramphenicol":"C",
-"Ceftazidime/Avi":"CZA"};
-var ORDER = Object.keys(ABBR);
-function drugRank(d){ var i=ORDER.indexOf(d); return i<0?999:i; }
-
-// จัดกลุ่มยาตามชนิด (ชื่อเต็มจากชีต -> รหัสกลุ่ม)
-var CLASS = {
-  "Ampicillin":"PEN","Amoxicillin/Cla":"PEN","Ampicillin/Sulb":"PEN","Piperacil/Tazob":"PEN","Oxacillin":"PEN","Penicillin":"PEN",
-  "Cefazolin":"CEPH","Cefuroxime":"CEPH","Cefoxitin":"CEPH","Ceftriaxone":"CEPH","Cefotaxime":"CEPH","Ceftazidime":"CEPH","Cefepime":"CEPH","Cefoperazone/Su":"CEPH","Ceftazidime/Avi":"CEPH","Cefixime":"CEPH","Cefpodoxime":"CEPH",
-  "Ertapenem":"CARB","Meropenem":"CARB","Imipenem":"CARB","Doripenem":"CARB",
-  "Gentamicin":"AMINO","Amikacin":"AMINO","Netilmicin":"AMINO","Tobramycin":"AMINO",
-  "Ciprofloxacin":"FQ","Levofloxacin":"FQ","Ofloxacin":"FQ","Norfloxacin":"FQ","Moxifloxacin":"FQ",
-  "Trimetho/Sulfa.":"FOL","Trimethoprim/Sul":"FOL",
-  "Tetracyclin":"TET","Doxycycline":"TET","Tigecycline":"TET","Minocycline":"TET",
-  "Vancomycin":"GLY","Teicoplanin":"GLY",
-  "Erythromycin":"MLS","Clindamycin":"MLS","Azithromycin":"MLS",
-  "Colistin":"POLY","Polymyxin B":"POLY",
-  "Chloramphenicol":"OTH","Fosfomycin":"OTH","Nitrofurantoin":"OTH","Linezolid":"OTH","Fusidic acid":"OTH"
+// ===== config ยา (จากไฟล์ที่กรอก) — แสดงเฉพาะยาในนี้ · key = ชื่อยาในชีต (บางตัวมี alias ชื่อเก่า) =====
+// {name: ชื่อที่แสดง, group: กลุ่ม, order: ลำดับกลุ่ม}
+// เรียงตามลำดับเล่ม (ลำดับใน object = ลำดับคอลัมน์)
+var DRUGS = {
+  "Penicillin":{name:"Penicillin",group:"Penicillin",order:1},
+  "Ampicillin":{name:"Ampicillin",group:"Penicillin",order:1},
+  "Oxacillin":{name:"Oxacillin",group:"Penicillin",order:1},
+  "Ceftazidime":{name:"Ceftazidime",group:"Cephalosporins",order:2},
+  "Ceftriaxone":{name:"Ceftriaxone",group:"Cephalosporins",order:2},
+  "Cefotaxime":{name:"Cefotaxime",group:"Cephalosporins",order:2},
+  "Cefepime":{name:"Cefepime",group:"Cephalosporins",order:2},
+  "Cefoxitin":{name:"Cefoxitin",group:"Cephalosporins",order:2},
+  "Amoxicillin/Cla":{name:"Amoxicillin/Clavulanate",group:"β-lactamase/β-lactam Inhibitor",order:3},
+  "Ampicillin/Sulb":{name:"Ampicillin/Sulbactam",group:"β-lactamase/β-lactam Inhibitor",order:3},
+  "Piperacil/Tazob":{name:"Piperacillin/Tazobactam",group:"β-lactamase/β-lactam Inhibitor",order:3},
+  "Cefoperazone/Su":{name:"Cefoperazone/Sulbactam",group:"β-lactamase/β-lactam Inhibitor",order:3},
+  "Ceftazidime/avi":{name:"Ceftazidime/Avibactam",group:"β-lactamase/β-lactam Inhibitor",order:3},
+  "Ertapenem":{name:"Ertapenem",group:"Carbapenem",order:4},
+  "Meropenem":{name:"Meropenem",group:"Carbapenem",order:4},
+  "Imipenem":{name:"Imipenem",group:"Carbapenem",order:4},
+  "Gentamicin":{name:"Gentamicin",group:"Aminoglycoside",order:5},
+  "Amikacin":{name:"Amikacin",group:"Aminoglycoside",order:5},
+  "Tetracycline":{name:"Tetracycline",group:"Tetracycline",order:6},
+  "Tigecycline":{name:"Tigecycline",group:"Tetracycline",order:6},
+  "Ciprofloxacin":{name:"Ciprofloxacin",group:"Fluoroquinolone",order:7},
+  "Levofloxacin":{name:"Levofloxacin",group:"Fluoroquinolone",order:7},
+  "Chloramphenicol":{name:"Chloramphenicol",group:"Chloramphenicol",order:8},
+  "Clindamycin":{name:"Clindamycin",group:"Clindamycin",order:9},
+  "Erythromycin":{name:"Erythromycin",group:"Erythromycin",order:10},
+  "Trimetho/Sulfa.":{name:"Trimethoprim/Sulfamethoxazole",group:"Trimethoprim/Sulfamethoxazole",order:11},
+  "Colistin":{name:"Colistin",group:"Colistin",order:12},
+  "Vancomycin":{name:"Vancomycin",group:"Vancomycin",order:13}
 };
-var CLASS_ORDER = ["PEN","CEPH","CARB","AMINO","FQ","FOL","TET","GLY","MLS","POLY","OTH"];
-var CLASS_LABEL = {PEN:"เพนิซิลลิน",CEPH:"เซฟาโลสปอริน",CARB:"คาร์บาพีเนม",AMINO:"อะมิโนไกลโคไซด์",FQ:"ฟลูออโรควิโนโลน",FOL:"โฟเลต",TET:"เตตราไซคลิน",GLY:"ไกลโคเปปไทด์",MLS:"แมโครไลด์/ลินโคซาไมด์",POLY:"โพลีมิกซิน",OTH:"อื่น ๆ"};
-function classOf(d){ return CLASS[d] || "OTH"; }
-function classRank(d){ var i=CLASS_ORDER.indexOf(classOf(d)); return i<0?99:i; }
+var DRUG_SEQ = Object.keys(DRUGS);
+function drugMeta(d){ return DRUGS[d] || null; }
+function classOf(d){ var m=drugMeta(d); return m?m.group:null; }
+function drugOrder(d){ var m=drugMeta(d); return m?m.order:999; }
+function drugSeq(d){ var i=DRUG_SEQ.indexOf(d); return i<0?999:i; }
+function drugLabel(d){ var m=drugMeta(d); return m?m.name:d; }
 
 var DATA = null;    // {strata:[...], byStratum:{st:{years:[],roll:'',orgs:[],drugs:[],cells:{org:{drug:{annual,roll}}},N:{org:{annual,roll}}}}}
 var mode = 'both', stratum = null, annualYear = null;
@@ -289,7 +305,9 @@ function transform(rows){
     S.years = Object.keys(S.yearsSet).sort();
     S.annualField = S.years.length ? ('Y'+S.years[S.years.length-1]) : null;
     S.annualYear = S.years.length ? S.years[S.years.length-1] : null;
-    S.drugs = Object.keys(S.drugsSet).sort(function(a,b){ return classRank(a)-classRank(b) || drugRank(a)-drugRank(b) || a.localeCompare(b); });
+    // แสดงเฉพาะยาที่อยู่ใน config (DRUGS) · เรียงตามลำดับกลุ่มที่กำหนด
+    S.drugs = Object.keys(S.drugsSet).filter(function(d){ return DRUGS[d]; })
+      .sort(function(a,b){ return drugOrder(a)-drugOrder(b) || drugSeq(a)-drugSeq(b); });
     S.orgs = Object.keys(S.cells).sort();
     // ความถี่ของเชื้อ = N สูงสุดข้ามทุกยา/ทุกช่วง -> ใช้เรียง "พบบ่อยก่อน"
     S.totalN = {};
@@ -335,16 +353,16 @@ function tableHTML(S, field, orgs){
     if(g && g.cls===c) g.drugs.push(d); else { groups.push({cls:c,drugs:[d]}); if(groups.length>1) sep[d]=1; }
   });
   var clsRow='<tr class="clsrow"><th class="org"></th>'+groups.map(function(g){
-    return '<th class="cls'+(g.cls!==groups[0].cls?' sep':'')+'" colspan="'+g.drugs.length+'">'+(CLASS_LABEL[g.cls]||g.cls)+'</th>';
+    return '<th class="cls'+(g.cls!==groups[0].cls?' sep':'')+'" colspan="'+g.drugs.length+'">'+g.cls+'</th>';
   }).join('')+'</tr>';
-  var abbrRow='<tr><th class="org">เชื้อ \\ ยา</th>'+drugs.map(function(d){
-    return '<th class="'+(sep[d]?'sep':'')+'" title="'+d+'">'+(ABBR[d]||d)+'</th>';
+  var nameRow='<tr class="namerow"><th class="org">เชื้อ \\ ยา</th>'+drugs.map(function(d){
+    return '<th class="vname'+(sep[d]?' sep':'')+'" title="'+drugLabel(d)+'"><span>'+drugLabel(d)+'</span></th>';
   }).join('')+'</tr>';
   var body=orgs.map(function(o){
     var tds=drugs.map(function(d){ return cellHTML(S.cells[o][d], field, sep[d]); }).join('');
     return '<tr><td class="org">'+o+'</td>'+tds+'</tr>';
   }).join('');
-  return '<table class="hm"><thead>'+clsRow+abbrRow+'</thead><tbody>'+body+'</tbody></table>';
+  return '<table class="hm"><thead>'+clsRow+nameRow+'</thead><tbody>'+body+'</tbody></table>';
 }
 function Nrange(S, field, orgs){
   var ns=orgs.map(function(o){ return (S.N[o]||{})[field]; }).filter(function(x){return x;});
