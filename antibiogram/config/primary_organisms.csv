@@ -1,0 +1,19 @@
+standard_name,genus,family
+Escherichia coli,escherichia,Enterobacterales
+Klebsiella pneumoniae,klebsiella,Enterobacterales
+Proteus mirabilis,proteus,Enterobacterales
+Serratia marcescens,serratia,Enterobacterales
+Citrobacter koseri,citrobacter,Enterobacterales
+Enterobacter cloacae,enterobacter,Enterobacterales
+Enterobacter hormaechei,enterobacter,Enterobacterales
+Acinetobacter baumannii,acinetobacter,Moraxellaceae
+Pseudomonas aeruginosa,pseudomonas,Pseudomonadaceae
+Stenotrophomonas maltophilia,stenotrophomonas,Xanthomonadaceae
+Staphylococcus aureus,staphylococcus,Staphylococcaceae
+Staphylococcus argenteus,staphylococcus,Staphylococcaceae
+Coagulase Negative Staphylococci,staphylococcus,Staphylococcaceae
+Beta hemolytic streptococci,streptococcus,Streptococcaceae
+Streptococcus Viridans group,streptococcus,Streptococcaceae
+Streptococcus pneumoniae,streptococcus,Streptococcaceae
+Enterococcus faecalis,enterococcus,Enterococcaceae
+Enterococcus faecium,enterococcus,Enterococcaceae

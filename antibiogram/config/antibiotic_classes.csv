@@ -1,0 +1,30 @@
+standard_name,class,order
+Penicillin,Penicillin,1
+Ampicillin,Penicillin,2
+Oxacillin,Penicillin,3
+Ceftazidime,Cepalosporins,4
+Ceftriaxone,Cepalosporins,5
+Cefotaxime,Cepalosporins,6
+Cefepime,Cepalosporins,7
+Cefoxitin,Cepalosporins,8
+Amoxicillin/Cla,β-lactam/β-lactamase inhibitor,9
+Ampicillin/Sulb,β-lactam/β-lactamase inhibitor,10
+Piperacil/Tazob,β-lactam/β-lactamase inhibitor,11
+Cefoperazone/Su,β-lactam/β-lactamase inhibitor,12
+Ceftazidime/avi,β-lactam/β-lactamase inhibitor,13
+Ertapenem,Carbapenem,14
+Meropenem,Carbapenem,15
+Imipenem,Carbapenem,16
+Doripenem,Carbapenem,17
+Gentamicin,Aminoglycosides,18
+Amikacin,Aminoglycosides,19
+Tetracycline,Tetracyclines,20
+Tigecycline,Tetracyclines,21
+Ciprofloxacin,Fluoroquinoolones,22
+Levofloxacin,Fluoroquinoolones,23
+Chloramphenicol,Chloramphenicol,24
+Erythromycin,Erythromycin,25
+Clindamycin,Clindamycin,26
+Trimetho/Sulfa.,Trimetho/Sulfa.,27
+Colistin,Colistin,28
+Vancomycin,Vancomycin,29
