@@ -54,7 +54,7 @@ h1{font-size:clamp(1.25rem,3.4vw,1.6rem);font-weight:800;letter-spacing:-.01em;m
 .panel-head.ann{box-shadow:inset 4px 0 0 var(--gold)}
 .panel-title{font-weight:800;font-size:.98rem}
 .panel-meta{font-size:.78rem;color:var(--muted)}
-.tscroll{overflow-x:auto}
+.tscroll{overflow:auto;max-height:74vh}
 table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 .hm th,.hm td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap}
 .hm thead th{position:sticky;top:0;background:var(--surface2);color:var(--muted);font-weight:700;font-size:.68rem;letter-spacing:.03em;padding:7px 6px;text-align:center;z-index:2}
@@ -86,13 +86,17 @@ table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
 .hm tbody tr:hover td.org{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--fg)}
 .hm tbody tr:nth-child(even) td.org{background:color-mix(in srgb,var(--surface2) 60%,var(--surface))}
 /* หัวข้อกลุ่มยา + เส้นคั่นระหว่างชนิด */
-.hm thead tr.clsrow th{position:static;background:var(--surface);color:var(--accent-2);font-weight:800;
-  font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;padding:5px 4px;text-align:center;
+/* แถวหัวข้อกลุ่ม = ตรึงบนสุด (top:0) */
+.hm thead tr.clsrow th{position:sticky;top:0;z-index:4;height:24px;box-sizing:border-box;
+  background:var(--surface);color:var(--accent-2);font-weight:800;
+  font-size:.62rem;letter-spacing:.04em;text-transform:uppercase;padding:4px 4px;text-align:center;
   border-bottom:1px solid var(--line2)}
-.hm thead tr.clsrow th.org{background:var(--surface);border-right:2px solid var(--line2)}
 .hm th.sep,.hm td.sep{border-left:2px solid var(--line2)}
-/* หัวคอลัมน์ = ชื่อยาเต็มแนวตั้ง (แบบเล่ม antibiogram) */
-.hm thead th.vname{vertical-align:bottom;padding:6px 3px;min-width:30px}
+/* หัวคอลัมน์ = ชื่อยาเต็มแนวตั้ง · ตรึงใต้แถวกลุ่ม (top:24px) */
+.hm thead th.vname{position:sticky;top:24px;z-index:3;vertical-align:bottom;padding:6px 3px;min-width:30px}
+/* มุมซ้ายบน (ช่อง "เชื้อ\ยา") ตรึงทั้งบนและซ้าย */
+.hm thead tr.clsrow th.org{top:0;left:0;z-index:6;background:var(--surface);border-right:2px solid var(--line2)}
+.hm thead tr.namerow th.org{top:24px;left:0;z-index:6}
 .hm thead th.vname span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;
   font-size:.66rem;font-weight:700;line-height:1.15;display:inline-block;letter-spacing:.2px}
 /* มือถือ: ตารางกระชับ อ่านง่ายบนจอเล็ก */
