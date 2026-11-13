@@ -45,6 +45,7 @@ def prepare(
     his_hn_col: str | None = None,
     his_admit_col: str | None = None,
     his_an_col: str | None = None,
+    his_discharge_col: str | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     """map -> clean -> normalize -> group -> join HIS -> classify CAI/HAI.
 
@@ -79,7 +80,8 @@ def prepare(
         adm = his_df
         if his_an_col and his_an_col in his_df.columns:
             adm = his_df[his_df[his_an_col].notna() & (his_df[his_an_col].astype(str).str.strip() != "")]
-        lookup = his_join.build_admit_lookup(adm, his_hn_col, his_admit_col)
+        lookup = his_join.build_admit_lookup(adm, his_hn_col, his_admit_col,
+                                             discharge_col=his_discharge_col)
         std = std.drop(columns=["admit_datetime"], errors="ignore")
         std = his_join.attach_admit(std, lookup)
         steps["admit_matched"] = int(std["admit_datetime"].notna().sum())

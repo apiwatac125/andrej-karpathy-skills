@@ -32,6 +32,8 @@ HERE = Path(__file__).resolve().parent
 PHI_COLS = {"hn", "name", "prename", "birth", "corganism", "an"}
 OUT_COLS = ["period", "period_start", "period_end", "stratum_type", "stratum",
             "organism", "drug", "n_tested", "n_s", "pct_s", "lt30", "intrinsic"]
+# admission ที่เริ่มก่อนไฟล์ qr1020 ไฟล์แรกหาไม่เจอ -> แยก CAI/HAI เฉพาะ isolate หลังวันแรกของไฟล์ + 90 วัน
+HIS_LOOKBACK_DAYS = 90
 
 
 def read_all_dbf(folder: str, encoding: str = "cp874") -> tuple[pd.DataFrame, list[str]]:
@@ -62,27 +64,35 @@ def dedup_reports(raw: pd.DataFrame,
 
 
 def filter_real_isolates(raw: pd.DataFrame, method_col="METHOD", method_val="O",
-                         drop_sources: list[str] | None = None, source_col="CSOURCE_A") -> pd.DataFrame:
-    """เก็บเฉพาะ isolate จริง: METHOD=O (ถ้ามีคอลัมน์) และตัดสิ่งส่งตรวจ screening ตาม config."""
+                         drop_sources: list[str] | None = None,
+                         source_cols=("CSOURCE_A", "CSOURCE")) -> pd.DataFrame:
+    """เก็บเฉพาะ isolate จริง: METHOD=O (ถ้ามีคอลัมน์) และตัดสิ่งส่งตรวจ screening ตาม config.
+
+    เทียบทั้ง CSOURCE_A และ CSOURCE: rectal swab บางแบบมี CSOURCE_A = "Stool" (ชื่อจริงอยู่ใน CSOURCE)
+    """
     out = raw
     if method_col in out.columns:
         out = out[out[method_col].astype(str).str.strip().str.upper() == method_val]
-    if drop_sources and source_col in out.columns:
+    if drop_sources:
         drop = {s.strip().lower() for s in drop_sources}
-        out = out[~out[source_col].astype(str).str.strip().str.lower().isin(drop)]
+        for col in source_cols:
+            if col in out.columns:
+                out = out[~out[col].astype(str).str.strip().str.lower().isin(drop)]
     return out.copy()
 
 
 def _emit(res, period, stratum_type, stratum, rows: list[dict]):
     """แตก long_form เป็นแถวสรุป (ไม่มี PHI)."""
     w = res.window
+    # rolling._window ไม่รวมวัน start (start < t <= end) -> แสดงวันแรกที่นับจริง (ปี 2025 = 2025-01-01 ไม่ใช่ 2024-12-31)
+    first_day = (w["start"].floor("D") + pd.Timedelta(days=1)).date().isoformat()
     for _, r in res.long_form.iterrows():
         intrinsic = bool(r.get("intrinsic"))
         n_tested = int(r["n_tested"])
         if n_tested == 0 and not intrinsic:
             continue  # ไม่ได้ทดสอบ -> ไม่ต้องเก็บ
         rows.append({
-            "period": period, "period_start": w["start"].date().isoformat(),
+            "period": period, "period_start": first_day,
             "period_end": w["end"].date().isoformat(),
             "stratum_type": stratum_type, "stratum": stratum,
             "organism": r["organism"], "drug": res.drug_name.get(r["antibiotic"], r["antibiotic"]),
@@ -114,6 +124,11 @@ def build_summary(std: pd.DataFrame, ab_cols: list[str], conditions: dict,
             for o in ("CAI", "HAI"):
                 strata.append(("origin", o, std[std["infection_origin"] == o]))
 
+    # หน้าต่าง rolling เดียวกันทุกกลุ่ม (จบที่วันล่าสุดของข้อมูลทั้งหมด) — ถ้าคิดจากวันล่าสุดของแต่ละกลุ่ม
+    # กลุ่มที่ไม่มีเชื้อมานานจะได้ "12 เดือนล่าสุด" ที่จริงเป็นข้อมูลเก่า (เช่นจบ 2025-03-14)
+    g_end = rolling.data_end(std)
+    g_start = g_end - pd.DateOffset(months=rolling_months) if g_end is not None else None
+
     rows: list[dict] = []
     for st_type, st_name, sub in strata:
         if sub.empty:
@@ -123,12 +138,10 @@ def build_summary(std: pd.DataFrame, ab_cols: list[str], conditions: dict,
         for y in sub_years:   # ปีที่กลุ่มนี้มีข้อมูล -> หน้าต่างรายปีไม่ว่างแน่นอน
             _emit(rolling.annual(sub, ab_cols, conditions, year=y),
                   str(y), st_type, st_name, rows)
-        end = rolling.data_end(sub)
-        if end is not None:   # rolling เฉพาะเมื่อมี isolate ในหน้าต่างย้อนหลัง
-            start = end - pd.DateOffset(months=rolling_months)
-            if not rolling._window(sub, start, end).empty:
-                _emit(rolling.rolling(sub, ab_cols, conditions, months=rolling_months),
-                      f"rolling{rolling_months}m", st_type, st_name, rows)
+        # กลุ่มที่ไม่มี isolate ในหน้าต่าง -> ไม่มีแถว rolling
+        if g_end is not None and not rolling._window(sub, g_start, g_end).empty:
+            _emit(rolling.rolling(sub, ab_cols, conditions, end=g_end, months=rolling_months),
+                  f"rolling{rolling_months}m", st_type, st_name, rows)
 
     df = pd.DataFrame(rows, columns=OUT_COLS)
     leaked = PHI_COLS & set(c.lower() for c in df.columns)
@@ -162,6 +175,12 @@ def push_to_gas(df: pd.DataFrame, gas_url: str, secret: str,
     import requests
     header = list(df.columns)
     rows = df.astype(object).where(df.notna(), "").values.tolist()
+    # setValues() แปลง "2025" เป็นตัวเลข -> column period ปนเลข/ข้อความ -> gviz ทิ้ง "rolling12m" เป็นค่าว่าง
+    # ใส่ ' นำหน้าให้ Sheet เก็บเป็นข้อความ (ไม่แสดง ' ในเซลล์) — แก้เฉพาะ payload, CSV ไม่เปลี่ยน
+    if "period" in header:
+        p = header.index("period")
+        for r in rows:
+            r[p] = "'" + str(r[p])
     for i in range(0, len(rows) or 1, chunk):
         payload = {"secret": secret, "action": action, "header": header,
                    "rows": rows[i:i + chunk],
@@ -223,6 +242,8 @@ def _resolve_his_cols(his, want):
         "his_hn_col": find(want.get("hn_col"), ["HN", "hn"]),
         "his_an_col": find(want.get("an_col"), ["AN", "an"]),
         "his_admit_col": find(want.get("admit_col"), ["ลงทะเบียน", "ลงทะ", "admit", "Admit", "regist"]),
+        # "วันที่จำหน่าย" เต็มคำ — ไม่ใช่ "เวลาที่จำหน่าย"/"สถานะจำหน่าย"
+        "his_discharge_col": find(want.get("discharge_col"), ["วันที่จำหน่าย", "discharge", "Discharge"]),
     }
 
 
@@ -240,6 +261,7 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
 
     his = None
     his_kw = {}
+    his_cov = None
     if his_dir:
         his, hfiles = _read_his_files(his_dir)
         if his is None:
@@ -247,9 +269,19 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
         else:
             his_kw = _resolve_his_cols(his, profile.get("his", {}))
             an, hn, adm = his_kw["his_an_col"], his_kw["his_hn_col"], his_kw["his_admit_col"]
+            # ช่วงวันที่ที่ไฟล์ qr1020 ครอบคลุม (คิดก่อนกรองเหลือ IPD) -> ใช้จำกัดว่า isolate ไหนแยก CAI/HAI ได้จริง
+            if adm and adm in his.columns:
+                reg = pd.to_datetime(his[adm], dayfirst=True, errors="coerce").dropna()
+                if not reg.empty:
+                    his_cov = (reg.min() + pd.Timedelta(days=HIS_LOOKBACK_DAYS), reg.max())
             # เก็บเฉพาะ IPD (มี AN) + ตัดซ้ำตาม AN ลดปริมาณ
+            # AN เดียวกันอยู่หลายไฟล์: ไฟล์หลังอาจมีวันจำหน่ายแล้ว -> เรียงให้แถวที่มีวันจำหน่ายอยู่ท้าย แล้วเก็บแถวท้าย
+            dcol = his_kw["his_discharge_col"]
             if an and an in his.columns:
                 his = his[his[an].notna() & (his[an].astype(str).str.strip() != "")]
+                if dcol and dcol in his.columns:
+                    has_dc = his[dcol].notna() & (his[dcol].astype(str).str.strip() != "")
+                    his = his.loc[has_dc.sort_values(kind="stable").index]
                 his = his.drop_duplicates(subset=[an], keep="last")
             # qr1020 HN 10 หลัก -> ตัด 2 หลักหน้าให้ตรง HN 8 หลักใน DBF
             if hn and hn in his.columns:
@@ -257,13 +289,21 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
                 his[hn] = his[hn].map(
                     lambda s: (lambda d: d[2:] if len(d) >= 10 else d)(re.sub(r"\D", "", str(s))))
             print(f"his: {len(hfiles)} ไฟล์ · {len(his):,} admission (IPD) · "
-                  f"คอลัมน์ HN={hn} AN={an} admit={adm}")
+                  f"คอลัมน์ HN={hn} AN={an} admit={adm} discharge={dcol}")
             if not adm:
                 print("  ⚠️ หาคอลัมน์วันแอดมิตไม่เจอ (หัวไทยอาจเพี้ยน) -> CAI/HAI จะไม่ทำงาน. "
                       f"คอลัมน์ที่มี: {list(his.columns)[:15]}", file=sys.stderr)
 
     std, steps = pipeline.prepare(raw, profile["col_map"], profile["ab_cols"], conditions,
                                   his_df=his, **his_kw)
+    # นอกช่วง qr1020 หา admission ไม่เจอ -> classify ตีเป็น CAI (missing_admit_as) หมด
+    # (เคยทำให้ตาราง CAI ปี 2023-2025 = All ทุกตัว) -> ไม่ให้ isolate พวกนี้เข้ากลุ่ม CAI/HAI
+    if "infection_origin" in std.columns:
+        dt = pd.to_datetime(std["collect_datetime"], errors="coerce")
+        ok = dt.between(*his_cov) if his_cov else pd.Series(False, index=std.index)
+        std.loc[~ok, "infection_origin"] = None
+        print("CAI/HAI: " + (f"ใช้ isolate {his_cov[0]:%Y-%m-%d}..{his_cov[1]:%Y-%m-%d} "
+                             f"({int(ok.sum()):,} ราย)" if his_cov else "ไม่มี qr1020 -> ไม่แยก"))
     if his is not None and "infection_origin" in std.columns:
         oc = std["infection_origin"].value_counts().to_dict()
         print(f"admit matched: {steps.get('admit_matched', 0):,} · origin {oc}")
@@ -295,13 +335,16 @@ def run(dbf_dir, profile, conditions, out, his_dir=None, encoding="cp874",
 
 def main():
     ap = argparse.ArgumentParser(description="Antibiogram daily ETL (รันบนเครื่อง lab, PHI ไม่ออก)")
-    ap.add_argument("--dbf-dir", required=True, help="โฟลเดอร์ไฟล์ .DBF รายวันจาก MLAB")
+    ap.add_argument("--dbf-dir", default=r"D:\MLAB2000\ANALYSIS", help="โฟลเดอร์ไฟล์ .DBF รายวันจาก MLAB")
     ap.add_argument("--his-dir", help="โฟลเดอร์ qr1020 (.xls) สำหรับแยก CAI/HAI (ไม่บังคับ)")
     ap.add_argument("--profile", default=str(HERE / "config" / "mlab_profile.json"))
     ap.add_argument("--out", default="antibiogram_summary.csv")
     ap.add_argument("--encoding", default="cp874")
     ap.add_argument("--rolling-months", type=int, default=12)
-    ap.add_argument("--drop-sources", default="", help="CSOURCE_A ที่เป็น screening (คั่นด้วย ,)")
+    # ชื่อตาม MLAB (สะกด "Surviellance" ตามระบบ) — 1 ม.ค.–29 ต.ค. 69 มี isolate screening ~150 ราย
+    ap.add_argument("--drop-sources",
+                    default="Rectal Swab (Surviellance),Rectal Swab - Stool,Stool (Surviellance)",
+                    help="CSOURCE_A/CSOURCE ที่เป็น screening (คั่นด้วย ,) · ใส่ \"\" = ไม่ตัด")
     ap.add_argument("--gas-url", help="GAS Web App URL เดิม (ส่งขึ้น Sheet ด้วย action=antibiogram)")
     ap.add_argument("--gas-secret", help="API secret เดียวกับ daily report")
     ap.add_argument("--sheet-id", help="Google Sheet id ปลายทาง (ทางเลือก gspread)")

@@ -23,16 +23,22 @@ def build_admit_lookup(
     hn_col: str,
     admit_col: str,
     admit_format: str | None = "%d/%m/%Y",
+    discharge_col: str | None = None,
 ) -> pd.DataFrame:
-    """แปลง HIS dataframe -> ตาราง (hn_norm, admit_datetime) หนึ่งแถวต่อ admission.
+    """แปลง HIS dataframe -> ตาราง (hn_norm, admit_datetime, discharge_datetime) หนึ่งแถวต่อ admission.
 
     คืนทุก admission (ยังไม่ยุบ) เพื่อให้เลือก admission ที่ตรงกับวันส่งตรวจภายหลัง.
+    discharge_datetime ว่าง = ยังนอนอยู่ ณ วันที่ export (หรือไม่มีคอลัมน์วันจำหน่าย).
     """
     out = pd.DataFrame()
     # astype(object) กันชนิดไม่ตรง (pandas 3.x อ่าน CSV เป็น StringDtype)
     out["hn_norm"] = his_df[hn_col].map(norm_hn).astype(object)
     out["admit_datetime"] = pd.to_datetime(
         his_df[admit_col], format=admit_format, errors="coerce"
+    )
+    out["discharge_datetime"] = (
+        pd.to_datetime(his_df[discharge_col], format=admit_format, errors="coerce")
+        if discharge_col and discharge_col in his_df.columns else pd.NaT
     )
     out = out[(out["hn_norm"] != "") & out["admit_datetime"].notna()]
     return out.sort_values("admit_datetime").reset_index(drop=True)
@@ -43,11 +49,15 @@ def attach_admit(
     admit_lookup: pd.DataFrame,
     lab_hn_col: str = "hn",
     collect_col: str = "collect_datetime",
+    max_open_days: int = 90,
 ) -> pd.DataFrame:
     """เติมคอลัมน์ 'admit_datetime' ให้ lab_df โดยเลือก admission ล่าสุด
-    ที่ admit <= วันส่งตรวจ (admission ที่ครอบคลุม/ก่อนการส่งตรวจนั้น).
+    ที่ admit <= วันส่งตรวจ และยังไม่จำหน่าย ณ วันส่งตรวจ (admission ที่คร่อมการส่งตรวจนั้น).
 
-    ใช้ merge_asof (backward) จับคู่ตามเวลาในแต่ละ HN.
+    ใช้ merge_asof (backward) จับคู่ตามเวลาในแต่ละ HN แล้วตัดคู่ที่ส่งตรวจหลังวันจำหน่าย
+    (ไม่งั้นผู้ป่วยที่กลับมาเพาะเชื้อที่ OPD หลังจำหน่ายไปหลายเดือนจะกลายเป็น HAI).
+    ไม่มีวันจำหน่าย: รับเฉพาะที่ส่งตรวจไม่เกิน max_open_days หลัง admit
+    (QR-10-020 กรองด้วยวัน admit -> คนนอนนานกว่าช่วงไฟล์จะไม่มีวันจำหน่ายตามมา).
     """
     left = lab_df.copy()
     left["hn_norm"] = left[lab_hn_col].map(norm_hn).astype(object)
@@ -57,6 +67,10 @@ def attach_admit(
     left[collect_col] = pd.to_datetime(left[collect_col], errors="coerce").astype("datetime64[ns]")
     right = admit_lookup.copy()
     right["admit_datetime"] = pd.to_datetime(right["admit_datetime"], errors="coerce").astype("datetime64[ns]")
+    if "discharge_datetime" not in right.columns:   # lookup แบบเดิมที่ไม่มีวันจำหน่าย
+        right["discharge_datetime"] = pd.NaT
+    right["discharge_datetime"] = pd.to_datetime(
+        right["discharge_datetime"], errors="coerce").astype("datetime64[ns]")
 
     # merge_asof ต้องเรียงตามคีย์เวลาและห้ามมี NaT ในคีย์ -> จับคู่เฉพาะแถวที่มีวันส่งตรวจ
     have_dt = left[collect_col].notna()
@@ -71,6 +85,10 @@ def attach_admit(
         by="hn_norm",
         direction="backward",
     )
+    dc = matched["discharge_datetime"]
+    open_days = (matched[collect_col] - matched["admit_datetime"]).dt.days
+    ended = (dc.notna() & (matched[collect_col] > dc)) | (dc.isna() & (open_days > max_open_days))
+    matched.loc[ended, "admit_datetime"] = pd.NaT
     # นำ admit_datetime ที่จับคู่ได้ กลับไปเติมทุกแถว (รวมแถวที่ไม่มีวันส่งตรวจ) ตามลำดับเดิม
     admit_by_row = matched.set_index("_row")["admit_datetime"]
     out = left.drop(columns=["hn_norm"])
