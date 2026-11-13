@@ -40,6 +40,7 @@ def compute_antibiogram(
     conditions: dict,
     organism_field: str = "organism",
     intrinsic=None,
+    suppress=None,
     drug_name: dict | None = None,
 ) -> pd.DataFrame:
     """คืนตาราง antibiogram แบบ long-form:
@@ -62,6 +63,9 @@ def compute_antibiogram(
     for organism, group in df.groupby(organism_field):
         for ab in antibiotic_columns:
             std_drug = drug_name.get(ab, ab)
+            # "ไม่ต้องรายงาน" -> ข้ามคู่นี้ทั้งหมด (ไม่มีแถว = ช่องว่างในตาราง)
+            if suppress is not None and suppress.is_suppressed(organism, std_drug):
+                continue
             if intrinsic is not None and intrinsic.is_intrinsic(organism, std_drug):
                 rows.append({
                     "organism": organism, "antibiotic": ab,

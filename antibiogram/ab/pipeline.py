@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from . import (antibiogram, classify, clean, dedup, dictionary, grouping,
-               his_join, intrinsic, loader, mapping, mdr, rollup)
+               his_join, intrinsic, loader, mapping, mdr, rollup, suppress)
 
 
 @dataclass
@@ -126,7 +126,8 @@ def finalize(
     drug_name = {ab: abx.normalize(ab) for ab in ab_cols}
     long_form = antibiogram.compute_antibiogram(
         work, ab_cols, conditions, organism_field="report_organism",
-        intrinsic=intrinsic.load_intrinsic(), drug_name=drug_name,
+        intrinsic=intrinsic.load_intrinsic(), suppress=suppress.load_suppress(),
+        drug_name=drug_name,
     )
     matrix = antibiogram.to_matrix(long_form, show_unreportable=show_unreportable)
     totals = work["report_organism"].value_counts().to_dict()
