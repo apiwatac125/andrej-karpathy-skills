@@ -11,7 +11,8 @@ from dataclasses import dataclass, field
 import pandas as pd
 
 from . import (antibiogram, classify, clean, dedup, dictionary, grouping,
-               his_join, intrinsic, loader, mapping, mdr, rollup, suppress)
+               his_join, intrinsic, loader, mapping, mdr, rollup, specimen_group,
+               suppress)
 
 
 @dataclass
@@ -75,6 +76,11 @@ def prepare(
     org_dict = dictionary.load_organism_dictionary()
     std["organism"] = std["organism"].map(lambda v: org_dict.normalize(v) if pd.notna(v) else v)
     std = grouping.apply_groups(std, organism_field="organism")
+
+    # จัดกลุ่มสิ่งส่งตรวจ: CSOURCE_A ดิบ -> กลุ่ม (config/specimens.csv) · ไม่มีใน dict = คงชื่อเดิม
+    if "specimen" in std.columns:
+        spg = specimen_group.load_specimen_groups()
+        std["specimen"] = std["specimen"].map(lambda s: spg.group_of(s) or s if pd.notna(s) else s)
 
     if his_df is not None and his_hn_col and his_admit_col:
         adm = his_df
