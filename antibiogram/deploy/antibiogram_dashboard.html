@@ -344,12 +344,13 @@ function cellHTML(c, field, sep){
   if(v==='R') return '<td class="cell rcell'+sc+'" title="ดื้อโดยธรรมชาติ (intrinsic)">R</td>';
   if(!v) return '<td class="cell empty'+sc+'">·</td>';
   var pct=v[0], n=v[1];
-  if(n<30) return '<td class="cell lt30'+sc+'" title="N<30 — ไม่รายงาน"><div class="pct">'+pct+'%</div><div class="n">N='+n+'</div></td>';
+  if(n<30) return onlyReportable ? '<td class="cell empty'+sc+'">·</td>'
+                                 : '<td class="cell lt30'+sc+'" title="N<30 — ไม่รายงาน"><div class="pct">'+pct+'%</div><div class="n">N='+n+'</div></td>';
   return '<td class="cell '+band(pct)+sc+'" title="'+pct+'% · N='+n+'"><div class="pct">'+pct+'<span style="font-size:.7em">%</span></div><div class="n">'+n+'</div></td>';
 }
 function tableHTML(S, field, orgs){
   if(!orgs.length) return '<div class="msg">ไม่พบเชื้อตามเงื่อนไข</div>';
-  var drugs = S.drugs.filter(function(d){ return orgs.some(function(o){ var c=S.cells[o][d]; return c && c[field]!=null; }); });
+  var drugs = S.drugs.filter(function(d){ return orgs.some(function(o){ var c=S.cells[o][d]; if(!c) return false; var v=c[field]; if(v==='R') return true; return Array.isArray(v) && (!onlyReportable || v[1]>=30); }); });
   // จับยาเป็นกลุ่มตามชนิด (ไว้ทำหัวข้อกลุ่ม + เส้นคั่น)
   var groups=[], sep={};
   drugs.forEach(function(d){
