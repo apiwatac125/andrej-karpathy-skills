@@ -1,0 +1,195 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Cumulative Antibiogram</title>
+<style>
+/* Layout: clinical dashboard card — paired heatmap (รายปี | 12 เดือนล่าสุด) เชื้อ×ยา, แถบสีตามเล่ม lab */
+:root{
+  --bg:#eaf0f5; --surface:#ffffff; --surface2:#f3f7fa; --fg:#15202b; --muted:#5e7180; --faint:#8699a6;
+  --line:#d6e1ea; --line2:#c2d2de; --accent:#1773c2; --accent-2:#0e5b9e; --gold:#c08a1e;
+  /* แถบสี %S ตามเล่ม antibiogram ของ lab (≥90 / 80–89 / 70–79 / 51–69 / ≤50) */
+  --b90:#4aa96b; --b90fg:#ffffff; --b80:#e2c13c; --b80fg:#352b00;
+  --b70:#e3933a; --b70fg:#2e1c00; --b51:#db5a4c; --b51fg:#ffffff; --b50:#8894a1; --b50fg:#ffffff;
+  --rcell:#e9eef2; --rfg:#7c8b98;
+  --shadow:0 1px 2px rgba(20,33,43,.05),0 8px 26px rgba(20,33,43,.07);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0d151d; --surface:#162431; --surface2:#1c2c3a; --fg:#e8eef4; --muted:#95a8b7; --faint:#6f8494;
+  --line:#26394a; --line2:#35506280; --accent:#49a4ea; --accent-2:#7cc0f2; --gold:#e0ad52;
+  --rcell:#1f2f3d; --rfg:#8296a4; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.32);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0d151d; --surface:#162431; --surface2:#1c2c3a; --fg:#e8eef4; --muted:#95a8b7; --faint:#6f8494;
+  --line:#26394a; --line2:#355062; --accent:#49a4ea; --accent-2:#7cc0f2; --gold:#e0ad52;
+  --rcell:#1f2f3d; --rfg:#8296a4; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.32);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);margin:0;
+  font-family:"Sarabun",-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.5;
+  font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:26px 56px}
+h1,h2,h3,.disp{font-family:"IBM Plex Sans Thai","Sarabun",sans-serif}
+.eyebrow{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.hosp{font-size:.82rem;color:var(--muted);font-weight:600;margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+  padding:20px 20px 22px;margin-top:16px}
+.card-head{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:4px}
+h1{font-size:clamp(1.25rem,3.4vw,1.6rem);font-weight:800;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:.9rem;margin-top:5px;max-width:62ch}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:16px 0 6px}
+.lab{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.pills{display:inline-flex;gap:5px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.pill{font:inherit;font-size:.84rem;font-weight:600;padding:6px 13px;border:0;border-radius:999px;background:transparent;
+  color:var(--muted);cursor:pointer;transition:.15s}
+.pill[aria-pressed="true"]{background:var(--accent);color:#fff;box-shadow:0 1px 4px rgba(14,91,158,.3)}
+.sel{font:inherit;font-size:.84rem;font-weight:600;padding:7px 12px;border:1px solid var(--line2);border-radius:9px;
+  background:var(--surface2);color:var(--fg)}
+.panels{display:grid;gap:16px;margin-top:14px}
+.panels.both{grid-template-columns:1fr 1fr}
+@media (max-width:760px){.panels.both{grid-template-columns:1fr}}
+.panel{min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.panel-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:11px 14px;border-bottom:1px solid var(--line);
+  background:linear-gradient(0deg,var(--surface2),var(--surface))}
+.panel-head.roll{box-shadow:inset 4px 0 0 var(--accent)}
+.panel-head.ann{box-shadow:inset 4px 0 0 var(--gold)}
+.panel-title{font-weight:800;font-size:.98rem}
+.panel-meta{font-size:.78rem;color:var(--muted)}
+.tscroll{overflow-x:auto}
+table.hm{border-collapse:separate;border-spacing:0;width:100%;font-size:.8rem}
+.hm th,.hm td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);white-space:nowrap}
+.hm thead th{position:sticky;top:0;background:var(--surface2);color:var(--muted);font-weight:700;
+  font-size:.68rem;letter-spacing:.03em;padding:7px 6px;text-align:center;z-index:2}
+.hm th.org,.hm td.org{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;
+  padding:7px 11px;font-weight:600;font-style:italic;max-width:168px;white-space:normal;line-height:1.25;border-right:2px solid var(--line2)}
+.hm thead th.org{z-index:3;font-style:normal}
+.hm td.cell{text-align:center;padding:4px 5px;min-width:46px}
+.hm td.cell .pct{font-weight:800;font-size:.86rem;line-height:1.05}
+.hm td.cell .n{font-size:.62rem;opacity:.72;font-weight:600}
+.b90{background:var(--b90);color:var(--b90fg)} .b80{background:var(--b80);color:var(--b80fg)}
+.b70{background:var(--b70);color:var(--b70fg)} .b51{background:var(--b51);color:var(--b51fg)} .b50{background:var(--b50);color:var(--b50fg)}
+.rcell{background:var(--rcell);color:var(--rfg);font-weight:700}
+.lt30{background:repeating-linear-gradient(45deg,var(--rcell),var(--rcell) 5px,transparent 5px,transparent 10px);color:var(--muted)}
+.lt30 .pct{font-weight:700;font-size:.7rem}
+.empty{color:var(--faint)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:18px;font-size:.8rem;color:var(--muted)}
+.swatch{display:inline-flex;align-items:center;gap:6px}
+.sw{width:22px;height:15px;border-radius:4px;display:inline-block}
+.notes{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem}
+.notes b{color:var(--fg)}
+.abbr{margin-top:10px;font-size:.74rem;color:var(--faint);line-height:1.7}
+.tag{display:inline-block;font-size:.7rem;font-weight:700;color:var(--accent-2);background:color-mix(in srgb,var(--accent) 14%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:2px 10px;vertical-align:middle;margin-left:8px}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">AMR Integrated Dashboard · ตัวอย่าง (mockup)</div>
+  <div class="hosp">โรงพยาบาลเลิดสิน · ระบบเฝ้าระวังเชื้อดื้อยา</div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <h1>🧫 Cumulative Antibiogram <span class="tag">ตารางคู่</span></h1>
+        <p class="sub">เปรียบเทียบ %S แบบ <b>รายปี</b> กับ <b>12 เดือนล่าสุด</b> เพื่อจับการดื้อยาที่เปลี่ยนเร็วกว่าตารางรายปี · คิดตาม CLSI M39 (isolate แรกต่อผู้ป่วย, รายงานเฉพาะ N ≥ 30)</p>
+      </div>
+    </div>
+
+    <div class="ctrls">
+      <span class="lab">มุมมอง</span>
+      <div class="pills" id="modePills">
+        <button class="pill" data-mode="both" aria-pressed="true" type="button">คู่ (รายปี + 12 เดือน)</button>
+        <button class="pill" data-mode="annual" aria-pressed="false" type="button">รายปี</button>
+        <button class="pill" data-mode="rolling" aria-pressed="false" type="button">12 เดือนล่าสุด</button>
+      </div>
+      <span class="lab" style="margin-left:6px">กลุ่ม</span>
+      <select class="sel" aria-label="กลุ่ม (ตัวอย่าง)">
+        <option>All specimen &amp; ward</option>
+        <option>Hemoculture (เลือด)</option>
+        <option>Respiratory (เสมหะ)</option>
+        <option>Urine (ปัสสาวะ)</option>
+        <option>MICU</option><option>SICU</option>
+        <option>CAI (ชุมชน)</option><option>HAI (โรงพยาบาล)</option>
+      </select>
+    </div>
+
+    <div class="panels both" id="panels"></div>
+
+    <div class="legend">
+      <span class="lab">%S</span>
+      <span class="swatch"><span class="sw b90"></span> ≥ 90</span>
+      <span class="swatch"><span class="sw b80"></span> 80–89</span>
+      <span class="swatch"><span class="sw b70"></span> 70–79</span>
+      <span class="swatch"><span class="sw b51"></span> 51–69</span>
+      <span class="swatch"><span class="sw b50"></span> ≤ 50</span>
+      <span class="swatch"><span class="sw rcell" style="background:var(--rcell)"></span> R = ดื้อโดยธรรมชาติ</span>
+      <span class="swatch"><span class="sw lt30"></span> N&lt;30 (ไม่รายงาน)</span>
+    </div>
+
+    <div class="notes">
+      <b>วิธีอ่าน:</b> แต่ละช่อง = %S และ (จำนวน isolate ที่ทดสอบ) · สีตามเล่ม antibiogram ของห้องแล็บ · “R” = ดื้อโดยธรรมชาติ (CLSI M100) ·
+      คอลัมน์ <b>12 เดือนล่าสุด</b> อัปเดตได้บ่อยกว่าปีละครั้ง จึงเห็นการเปลี่ยนแปลงก่อน (เช่น เชื้อที่รายปียังไม่ถึง 30 ตัว แต่สะสม 12 เดือนถึงเกณฑ์แล้ว) ·
+      ในระบบจริง <b>คลิกช่อง</b> เพื่อดูกราฟแนวโน้ม %S ย้อนหลังทุกปี
+      <div class="abbr"><b>ยา:</b> AMP Ampicillin · AMC Amoxicillin/clav · SAM Ampicillin/sulbactam · TZP Piperacillin/tazobactam · CRO Ceftriaxone · CAZ Ceftazidime · FEP Cefepime · ETP Ertapenem · MEM Meropenem · IPM Imipenem · AMK Amikacin · GEN Gentamicin · CIP Ciprofloxacin</div>
+      <div class="abbr">เป็นข้อมูลสนับสนุนการเลือกยา empiric ไม่ใช่แทนผลเพาะเชื้อของผู้ป่วยรายนั้น · ตัวอย่างนี้ใช้ข้อมูลจริง “All specimen &amp; ward” ปี 2568 เป็นคอลัมน์รายปี; คอลัมน์ 12 เดือนล่าสุดเป็นค่าสาธิต</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const RAW = __MOCK_DATA__;
+const ABBR = {"Ampicillin":"AMP","Amoxicillin/Cla":"AMC","Ampicillin/Sulb":"SAM","Piperacillin/Tazobactam":"TZP",
+"Ceftriaxone":"CRO","Ceftazidime":"CAZ","Cefepime":"FEP","Ertapenem":"ETP","Meropenem":"MEM","Imipenem":"IPM",
+"Amikacin":"AMK","Gentamicin":"GEN","Ciprofloxacin":"CIP","Trimethoprim/Sulfa":"SXT","Colistin":"CST","Vancomycin":"VAN"};
+/* เก็บเฉพาะยาที่มีค่าอย่างน้อย 1 ช่อง (ตัดคอลัมน์ว่างทั้งแถว) */
+const DRUGS = RAW.drugs.filter(d => RAW.rows.some(r => { const c=r.cells[d]; return c && (c.annual!=null || c.roll!=null); }));
+
+function band(v){ return v>=90?'b90':v>=80?'b80':v>=70?'b70':v>=51?'b51':'b50'; }
+function cellHTML(c, field){
+  if(!c) return '<td class="cell empty">·</td>';
+  const v=c[field];
+  if(v==='R') return '<td class="cell rcell" title="ดื้อโดยธรรมชาติ (intrinsic)">R</td>';
+  if(!v) return '<td class="cell empty">·</td>';
+  const [pct,n]=v;
+  if(n<30) return `<td class="cell lt30" title="N<30 — ไม่รายงาน"><div class="pct">${pct}%</div><div class="n">N=${n}</div></td>`;
+  return `<td class="cell ${band(pct)}" title="${pct}% · N=${n}"><div class="pct">${pct}<span style="font-size:.7em">%</span></div><div class="n">${n}</div></td>`;
+}
+function tableHTML(field){
+  const head='<thead><tr><th class="org">เชื้อ \\ ยา</th>'+DRUGS.map(d=>`<th title="${d}">${ABBR[d]||d}</th>`).join('')+'</tr></thead>';
+  const body=RAW.rows.map(r=>{
+    const tds=DRUGS.map(d=>cellHTML(r.cells[d], field)).join('');
+    return `<tr><td class="org">${r.org}</td>${tds}</tr>`;
+  }).join('');
+  return `<table class="hm">${head}<tbody>${body}</tbody></table>`;
+}
+function Nrange(field){
+  const ns=RAW.rows.map(r=> field==='annual'? r.N_annual : r.N_roll).filter(x=>x);
+  return ns.length? `N ${Math.min(...ns).toLocaleString()}–${Math.max(...ns).toLocaleString()}` : '';
+}
+function panel(field){
+  const ann = field==='annual';
+  const title = ann? 'รายปี 2568 (2025)' : '12 เดือนล่าสุด';
+  const meta  = ann? 'ปีปฏิทิน · '+Nrange('annual') : 'ต.ค. 2567 – ก.ย. 2568 (สาธิต) · '+Nrange('roll');
+  return `<div class="panel"><div class="panel-head ${ann?'ann':'roll'}">
+      <span class="panel-title">${title}</span><span class="panel-meta">${meta}</span></div>
+    <div class="tscroll">${tableHTML(field)}</div></div>`;
+}
+let mode='both';
+function render(){
+  const el=document.getElementById('panels');
+  el.className='panels'+(mode==='both'?' both':'');
+  el.innerHTML = mode==='annual'? panel('annual')
+               : mode==='rolling'? panel('roll' /*field*/)
+               : panel('annual')+panel('roll');
+}
+/* field key fix: rolling uses 'roll' */
+function panelFix(){}
+document.getElementById('modePills').addEventListener('click',e=>{
+  const b=e.target.closest('.pill'); if(!b) return;
+  mode=b.dataset.mode;
+  for(const p of document.querySelectorAll('#modePills .pill')) p.setAttribute('aria-pressed', p===b);
+  render();
+});
+render();
+</script>

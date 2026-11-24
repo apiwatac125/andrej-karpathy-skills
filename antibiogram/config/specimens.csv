@@ -1,0 +1,24 @@
+raw_name,group
+Hemoculture-Blood,Blood
+Respiratory Tract,Respiratory
+Urine,Urine
+Pus (site ??),Pus/Wound/Soft tissue
+Wound Swab (แผล),Pus/Wound/Soft tissue
+Neck (EXUDATE),Pus/Wound/Soft tissue
+Tissue,Tissue
+Fluid (site ??),Body fluid (sterile)
+JACKSON DRAIN (Swab),Body fluid (sterile)
+Abdomen (FLUID),Body fluid (sterile)
+Kidney (ซ้าย)Fluid,Body fluid (sterile)
+ICD (Swab),Body fluid (sterile)
+Bone (SWAB),Bone/Joint
+Joint - Synovial Fluid,Bone/Joint
+Joint (ใส่ขวดHemo.),Bone/Joint
+CSF (Cerebrospinal Fluid),CSF
+Swab จาก Cath.(Tripple Lumen),Catheter/Device
+Double Lumen,Catheter/Device
+Genital Swab,Genital
+Stool,Others
+EYE (SWAB),Others
+Ear (SWAB),Others
+Others Specimen,Others
